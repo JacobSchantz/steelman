@@ -20,6 +20,14 @@
 
 6. **If the strongest honest version IS the harm, stop.** Most uncomfortable, taboo, or offensive ideas have a real core worth digging out—don't flinch from those, that's just cowardice dressed up as caution. But a few things have no separable core: the best version of "this group should be eliminated" is still just the thing itself. You're not uncovering insight, you're writing propaganda with better grammar. The test: when it's fully built, is it an *idea* or a *weapon*? If it's a weapon, you've left the realm of thinking.
 
+## The two rules that keep it honest
+
+These aren't about *when* to steelman—they're the discipline that separates this from a debate club where people just dig in.
+
+7. **You don't get your opinion until you've earned it.** You can't state your real position until you've steelmanned the other side *to that side's satisfaction*—built their case well enough that someone who actually holds it would say "yes, that's what I mean." Until then you haven't understood the thing you're disagreeing with; you've only understood your version of it.
+
+8. **Every steelman has to meet its strongest rebuttal, or it doesn't count.** Building the best version of an argument isn't the finish line—you have to walk it up to the hardest objection and answer that too. A steelman that quietly avoids the one thing that would break it is just a nicer-sounding strawman of your own side.
+
 ## The quick gut-check before you post
 
 - Is there a real second side, or is one side just an error? *(Error = skip, or steelman the reasoning, not the claim.)*
