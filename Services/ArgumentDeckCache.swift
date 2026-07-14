@@ -15,8 +15,14 @@ final class ArgumentDeckCache {
         var selectedQuestionID: UUID?
         /// The page (question card or clip) the feed is parked on.
         var currentPageID: UUID?
-        /// Pages heard end-to-end — what unlocks scrolling past them.
-        var heardPageIDs: [UUID]
+        /// How far into the current question's feed the listener has earned their way, as an
+        /// index into its pages. Deliberately *not* a set of every page ever heard: that set
+        /// only ever grew, and since a question card's page id is the question's id, one lap
+        /// around the loop put every page of every question in it and switched the lock off
+        /// for good. An index resets when you enter a question, so the gate re-arms.
+        /// Optional so snapshots written before this change still decode (as "start at the
+        /// top", which is the safe answer).
+        var unlockedIndex: Int?
         /// Questions whose clips have all been heard; the next-question pick skips these.
         var completedQuestionIDs: [UUID]
     }

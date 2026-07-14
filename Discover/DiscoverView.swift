@@ -11,6 +11,9 @@ import SwiftUI
 /// - No skip-forward and no scrubbing at all — the bar is a playback indicator.
 /// - The next page can be peeked at by scrolling, but the feed bounces back with a lock
 ///   message until the current page — question card or clip — has been heard to the end.
+///   The gate is per pass through a question (see `unlockedIndex`), so coming back around
+///   the loop to a question you've heard before makes you listen to it again rather than
+///   handing you a feed you can swipe straight through.
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
@@ -22,13 +25,21 @@ struct DiscoverView: View {
     /// Clips for the selected question only, in alternating-side order.
     @State private var clips: [ArgumentClip] = []
     @State private var currentPageID: UUID?
-    /// Pages heard end-to-end — question cards included. This is what unlocks scrolling.
-    @State private var heardPageIDs: Set<UUID> = []
+    /// How far into *this* question's feed the listener has earned their way: the highest
+    /// index in `pages` they're allowed to land on. It starts at 0 (the question card) every
+    /// time a question is entered and only moves when the page it points at is heard out.
+    ///
+    /// It used to be a set of every page ever heard, which quietly disabled the lock: a
+    /// question card's page id is its question's id, and the last page of a question's feed
+    /// is the *next* question's card — so one lap around the loop put every page of every
+    /// question into the set, every page was "already heard", and the feed unlocked end to
+    /// end. An index can't accumulate like that.
+    @State private var unlockedIndex = 0
     /// Questions already listened through; the next-question pick prefers fresh ones.
     @State private var completedQuestionIDs: Set<UUID> = []
     @State private var downloadingClips: Set<UUID> = []
     @State private var didInitialLoad = false
-    @State private var showingPicker = false
+    @State private var browsingQuestions = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
 
@@ -90,14 +101,10 @@ struct DiscoverView: View {
         return others.first { !completedQuestionIDs.contains($0.id) } ?? others.first
     }
 
-    /// Highest index the listener may land on: everything through the first page they
-    /// haven't finished (inclusive). Past that is locked until they listen.
+    /// Highest index the listener may land on. Past that is locked until they listen.
     private var maxAllowedIndex: Int {
         guard !pages.isEmpty else { return 0 }
-        for (i, page) in pages.enumerated() where !heardPageIDs.contains(page.id) {
-            return i
-        }
-        return pages.count - 1
+        return min(unlockedIndex, pages.count - 1)
     }
 
     /// Everything earned, plus **one page beyond** — the peek. The peek exists so the
@@ -129,14 +136,17 @@ struct DiscoverView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingPicker = true } label: {
+                    Button { browsingQuestions = true } label: {
                         Image(systemName: "text.bubble.fill")
                     }
-                    .accessibilityLabel("Choose a question")
+                    .accessibilityLabel("Browse questions")
                 }
             }
-            .sheet(isPresented: $showingPicker) {
-                QuestionPickerSheet(
+            // A page you go to, not a sheet that covers the feed: browsing the library is a
+            // place of its own, with room for a search field, the categories, and enough of
+            // each question to recognise it.
+            .navigationDestination(isPresented: $browsingQuestions) {
+                QuestionBrowseView(
                     questions: questions,
                     answers: answers,
                     currentQuestionID: currentQuestion?.id,
@@ -154,8 +164,7 @@ struct DiscoverView: View {
             .onChange(of: questions.questions) { _, _ in rebuildClips() }
             .onChange(of: player.finishedItemID) { _, finished in
                 guard let finished else { return }
-                heardPageIDs.insert(finished)
-                persist()
+                unlockNextPage(afterHearing: finished)
                 advanceIfQuestionFinished(afterHearing: finished)
             }
             .onChange(of: currentPageID) { _, newID in handleLanding(on: newID) }
@@ -263,6 +272,17 @@ struct DiscoverView: View {
         }
     }
 
+    /// A page played out. It earns the *next* page only if it was the page the listener was
+    /// actually gated on — finishing something behind them (a clip they scrolled back to,
+    /// or one that was still playing while they wandered off) opens nothing.
+    private func unlockNextPage(afterHearing pageID: UUID) {
+        guard pages.indices.contains(maxAllowedIndex),
+              pages[maxAllowedIndex].id == pageID,
+              unlockedIndex < pages.count - 1 else { return }
+        unlockedIndex = maxAllowedIndex + 1
+        persist()
+    }
+
     /// Last clip of the question just played out — roll into the next question's card so
     /// the feed keeps going without the listener having to do anything.
     private func advanceIfQuestionFinished(afterHearing pageID: UUID) {
@@ -282,6 +302,10 @@ struct DiscoverView: View {
             completedQuestionIDs.insert(current)
         }
         selectedQuestionID = questionID
+        // A question is always entered from the top: its card has to be read out before
+        // anything behind it opens up, whether this is the first time through or the fifth.
+        // Coming back around the loop re-locks the feed — that is the point of the loop.
+        unlockedIndex = 0
         rebuildClips()
         // The question's card is page 0, and it carries the question's id — so when this
         // came from scrolling onto the trailing card, the listener is already on it.
@@ -292,13 +316,15 @@ struct DiscoverView: View {
     /// The listener scrolled onto the locked peek page. Let them see it, then bounce them
     /// back to the page they still owe a listen to, and say why.
     private func bounceBackToCurrent() {
-        guard !pages.isEmpty else { return }
+        guard pages.indices.contains(maxAllowedIndex) else { return }
         let allowedID = pages[maxAllowedIndex].id
+        // Assigned unconditionally. The old code skipped the write when the state already
+        // said `allowedID` — but the scroll view ignores a programmatic position change made
+        // while a finger is down, so state and view drift apart exactly when someone is
+        // swiping hard, and the skip then made every later bounce a no-op.
         withAnimation(.snappy) {
             showLockMessage = true
-            if currentPageID != allowedID {
-                currentPageID = allowedID
-            }
+            currentPageID = allowedID
         }
         lockMessageTask?.cancel()
         lockMessageTask = Task {
@@ -313,14 +339,20 @@ struct DiscoverView: View {
     private func restore() {
         let snapshot = deckCache.loadSnapshot()
         if let snapshot {
-            heardPageIDs = Set(snapshot.heardPageIDs)
             completedQuestionIDs = Set(snapshot.completedQuestionIDs)
             if let saved = snapshot.selectedQuestionID, questions.question(id: saved) != nil {
                 selectedQuestionID = saved
             }
         }
         rebuildClips()
-        if let saved = snapshot?.currentPageID, pages.contains(where: { $0.id == saved }) {
+        // Hand back the place they earned, but never more feed than there is now — the deck
+        // is rebuilt from the answers, and those can have changed while the app was away.
+        unlockedIndex = min(max(snapshot?.unlockedIndex ?? 0, 0), max(pages.count - 1, 0))
+        // And never resume *past* the lock: a saved page beyond what's been unlocked would
+        // drop them straight onto a locked page.
+        if let saved = snapshot?.currentPageID,
+           let idx = pages.firstIndex(where: { $0.id == saved }),
+           idx <= maxAllowedIndex {
             currentPageID = saved
         } else {
             currentPageID = pages.first?.id
@@ -354,7 +386,7 @@ struct DiscoverView: View {
         deckCache.save(ArgumentDeckCache.Snapshot(
             selectedQuestionID: currentQuestion?.id,
             currentPageID: currentPageID,
-            heardPageIDs: Array(heardPageIDs),
+            unlockedIndex: unlockedIndex,
             completedQuestionIDs: Array(completedQuestionIDs)
         ))
     }

@@ -155,6 +155,7 @@ struct NewQuestionSheet: View {
     @State private var sideA = ""
     @State private var sideB = ""
     @State private var detail = ""
+    @State private var category = ""
 
     var body: some View {
         NavigationStack {
@@ -169,6 +170,32 @@ struct NewQuestionSheet: View {
                     TextField("Side A label", text: $sideA)
                     TextField("Side B label", text: $sideB)
                 }
+                Section {
+                    TextField("Category (optional)", text: $category)
+                        .textInputAutocapitalization(.words)
+                    // Free text, but the categories already in use are one tap away — that's
+                    // what keeps "Work" and "work" and "Working" from becoming three
+                    // categories in the browse page's filter row.
+                    if !store.categories.isEmpty {
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 8) {
+                                ForEach(store.categories, id: \.self) { existing in
+                                    Button(existing) { category = existing }
+                                        .font(.caption.weight(.semibold))
+                                        .buttonStyle(.bordered)
+                                        .buttonBorderShape(.capsule)
+                                        .tint(SteelmanTheme.color(forCategory: existing))
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .scrollIndicators(.hidden)
+                    }
+                } header: {
+                    Text("Category")
+                } footer: {
+                    Text("Groups the question in the browse page, where you can filter by it.")
+                }
             }
             .navigationTitle("New question")
             .navigationBarTitleDisplayMode(.inline)
@@ -178,11 +205,13 @@ struct NewQuestionSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
+                        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
                         store.add(Question(
                             prompt: prompt.trimmingCharacters(in: .whitespacesAndNewlines),
                             sideALabel: sideA.trimmingCharacters(in: .whitespacesAndNewlines),
                             sideBLabel: sideB.trimmingCharacters(in: .whitespacesAndNewlines),
-                            detail: detail.trimmingCharacters(in: .whitespacesAndNewlines)
+                            detail: detail.trimmingCharacters(in: .whitespacesAndNewlines),
+                            category: trimmedCategory.isEmpty ? nil : trimmedCategory
                         ))
                         dismiss()
                     }

@@ -23,6 +23,20 @@ final class QuestionStore: ObservableObject {
         questions.first { $0.id == id }
     }
 
+    /// Every category currently in use, alphabetically. There is no category list to
+    /// maintain — a category exists exactly as long as a question wears it, which is what
+    /// lets the browse page's filter row be built straight from the data. Case-insensitively
+    /// de-duplicated ("Work" and "work" are one category), displayed as first written.
+    var categories: [String] {
+        var firstSpelling: [String: String] = [:]
+        for question in questions {
+            guard let category = question.normalizedCategory else { continue }
+            let key = category.lowercased()
+            if firstSpelling[key] == nil { firstSpelling[key] = category }
+        }
+        return firstSpelling.values.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     func add(_ question: Question) {
         questions.insert(question, at: 0)
         persist()
@@ -54,21 +68,24 @@ final class QuestionStore: ObservableObject {
             prompt: "Should cities ban cars from downtown cores on weekdays?",
             sideALabel: "Ban cars downtown",
             sideBLabel: "Keep cars downtown",
-            detail: "Public space, climate, equity for people who can't easily switch modes."
+            detail: "Public space, climate, equity for people who can't easily switch modes.",
+            category: "Cities"
         ),
         Question(
             id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
             prompt: "Is remote work better for most knowledge workers than full-time office?",
             sideALabel: "Remote-first is better",
             sideBLabel: "Office-first is better",
-            detail: "Productivity, mentorship, loneliness, real-estate, and who bears the costs."
+            detail: "Productivity, mentorship, loneliness, real-estate, and who bears the costs.",
+            category: "Work"
         ),
         Question(
             id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
             prompt: "Should social platforms be legally required to verify adult users' ages?",
             sideALabel: "Require age verification",
             sideBLabel: "No mandated verification",
-            detail: "Child safety, privacy, free speech, and enforcement costs."
+            detail: "Child safety, privacy, free speech, and enforcement costs.",
+            category: "Technology"
         ),
     ]
 }
