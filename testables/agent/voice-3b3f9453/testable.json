@@ -5,7 +5,8 @@
   "id": "voice-3b3f9453",
   "test_instructions": [],
   "results": [],
-  "updated_at": "2026-07-14T19:24:31.000Z",
+  "updated_at": "2026-07-14T19:25:37Z",
   "description": "Playback doesn't seem to work correctly. One, I can skip forward. That shouldn't be there. The bar should just be a playback indicator. No ability to skip forward. We do have the ability to skip backwards though. And then, make sure all the controls are synced exactly with the actual state of playback. Not some third internal app state. uh secondly we should be if we scroll down we should be able to see the next thing the next item but then it should bounce us back up returning a lock icon saying you have to finish listening to this one first",
-  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+  "transcription_model": "mlx-community/whisper-large-v3-mlx",
+  "working_on": "workspace:176"
 }
