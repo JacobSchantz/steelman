@@ -5,8 +5,9 @@ import SwiftUI
 /// you cannot hear the same side of a question twice without hearing the other side first.
 ///
 /// Product gates on the feed itself:
-/// - No skip-forward / no scrubbing into unheard audio.
-/// - Cannot scroll to the *next* viewpoint until the current clip has been fully heard.
+/// - No skip-forward and no scrubbing at all — the bar is a playback indicator.
+/// - The *next* viewpoint can be peeked at by scrolling, but the feed bounces back to the
+///   current one with a lock message until the current clip has been heard to the end.
 /// - Answer body text is hidden for now (title/subtitle remain).
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
@@ -21,6 +22,9 @@ struct DiscoverView: View {
     @State private var didInitialLoad = false
     /// Clips the user has listened all the way through — unlocks scrolling past them.
     @State private var fullyHeardIDs: Set<UUID> = []
+    /// Shown after the feed bounces the user back off a locked card.
+    @State private var showLockMessage = false
+    @State private var lockMessageTask: Task<Void, Never>?
 
     @AppStorage("discoverTotalSwiped") private var totalSwiped = 0
     @State private var countedIDs: Set<UUID> = []
@@ -76,40 +80,67 @@ struct DiscoverView: View {
             .onChange(of: questions.questions) { _, _ in
                 rebuildDeck(preferCache: false)
             }
-            .onChange(of: clipPlayer.hasFullyHeardCurrent) { _, heard in
-                guard heard, let id = currentClip?.id else { return }
-                fullyHeardIDs.insert(id)
+            .onChange(of: clipPlayer.finishedClipID) { _, finished in
+                // The player names the clip that reached its end, so a card change mid-
+                // completion can't credit the wrong one.
+                guard let finished else { return }
+                fullyHeardIDs.insert(finished)
             }
             .onChange(of: currentID) { _, newID in
                 guard let newID, let newIndex = clips.firstIndex(where: { $0.id == newID }) else { return }
                 if newIndex > maxAllowedIndex {
-                    // Snap back — user tried to advance past an unfinished viewpoint.
-                    let allowedID = clips[maxAllowedIndex].id
-                    if currentID != allowedID {
-                        currentID = allowedID
-                    }
+                    bounceBackToCurrent()
                 }
             }
+            .onDisappear { lockMessageTask?.cancel() }
+        }
+    }
+
+    /// The user scrolled onto the locked peek card. Let them see it, then bounce them back
+    /// to the clip they still owe a listen to, and say why.
+    private func bounceBackToCurrent() {
+        guard !clips.isEmpty else { return }
+        let allowedID = clips[maxAllowedIndex].id
+        withAnimation(.snappy) {
+            showLockMessage = true
+            if currentID != allowedID {
+                currentID = allowedID
+            }
+        }
+        lockMessageTask?.cancel()
+        lockMessageTask = Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { showLockMessage = false }
         }
     }
 
     // MARK: - Feed (keepMovin Discover scroll mechanics)
 
-    /// Only past + the first unfinished clip are in the scroll stack. Finishing the
-    /// current viewpoint appends the next page so scroll-down becomes available.
+    /// Past clips, the first unfinished one, and **one page beyond it** — the peek. The
+    /// peek page exists so the user can scroll down and see that a next viewpoint is
+    /// waiting; landing on it bounces them straight back (`bounceBackToCurrent`).
     private var scrollableClips: [ArgumentClip] {
         guard !clips.isEmpty else { return [] }
-        let end = min(maxAllowedIndex + 1, clips.count)
+        let end = min(maxAllowedIndex + 2, clips.count)
         return Array(clips.prefix(end))
+    }
+
+    /// True for the peek page — the one viewpoint rendered beyond what's been earned.
+    private func isLocked(_ clip: ArgumentClip) -> Bool {
+        guard let idx = clips.firstIndex(where: { $0.id == clip.id }) else { return false }
+        return idx > maxAllowedIndex
     }
 
     private var feed: some View {
         ScrollView(.vertical) {
             LazyVStack(spacing: 0) {
                 ForEach(scrollableClips) { clip in
+                    let locked = isLocked(clip)
                     ArgumentFeedCard(
                         clip: clip,
-                        isCurrent: clip.id == currentClip?.id,
+                        isCurrent: !locked && clip.id == currentClip?.id,
+                        isLocked: locked,
                         clipPlayer: clipPlayer
                     )
                     .containerRelativeFrame([.horizontal, .vertical])
@@ -121,6 +152,26 @@ struct DiscoverView: View {
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
         .scrollIndicators(.hidden)
         .scrollPosition(id: $currentID, anchor: .top)
+        .overlay(alignment: .top) { lockMessage }
+    }
+
+    @ViewBuilder
+    private var lockMessage: some View {
+        if showLockMessage {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                Text("Finish listening to this one first")
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().stroke(Color.secondary.opacity(0.25)))
+            .shadow(radius: 8, y: 2)
+            .padding(.top, 12)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .allowsHitTesting(false)
+        }
     }
 
     private var emptyState: some View {
@@ -185,9 +236,9 @@ struct DiscoverView: View {
             return
         }
 
-        // Enforce scroll gate even if scrollPosition jumped somehow.
+        // Landed on the locked peek page. Don't play it, don't count it — the currentID
+        // change already kicked off the bounce back to the clip they still owe a listen.
         if let idx = clips.firstIndex(where: { $0.id == clip.id }), idx > maxAllowedIndex {
-            currentID = clips[maxAllowedIndex].id
             return
         }
 
@@ -236,10 +287,13 @@ struct DiscoverView: View {
 // MARK: - Feed card
 
 /// Full-bleed page: artwork + title/subtitle + transport (play/pause + skip back only).
+/// The bar is a read-only indicator — there is no scrubbing and no skip-forward.
 /// Side rail and answer body text are intentionally omitted for the current product pass.
 private struct ArgumentFeedCard: View {
     let clip: ArgumentClip
     let isCurrent: Bool
+    /// The peek page: visible so the user knows more is coming, but not yet earned.
+    let isLocked: Bool
     @ObservedObject var clipPlayer: ClipPreviewPlayer
 
     var body: some View {
@@ -251,20 +305,16 @@ private struct ArgumentFeedCard: View {
             currentTime: isCurrent ? clipPlayer.progress : 0,
             duration: isCurrent ? clipPlayer.duration : max(clip.duration, 1),
             bufferedTime: isCurrent ? clipPlayer.bufferedProgress : 0,
-            maxScrubTime: isCurrent ? clipPlayer.farthestProgress : 0,
             // Only the active card mirrors real engine state — other pages stay on "play".
             isPlaying: isCurrent && clipPlayer.isPlaying,
             description: "",
-            sliderInteractive: isCurrent,
-            showSkipForward: false,
+            sliderInteractive: false,
             showSkipBackward: true,
             showDescription: false,
-            onScrubbingChanged: { _ in },
             scrollable: false,
-            onSeek: { guard isCurrent else { return }; clipPlayer.seek(to: $0) },
+            onSeek: { _ in },
             onSkipBackward: { guard isCurrent else { return }; clipPlayer.skipBackward() },
             onTogglePlayPause: { guard isCurrent else { return }; clipPlayer.togglePlayPause() },
-            onSkipForward: nil,
             errorMessage: isCurrent ? clipPlayer.errorMessage : nil,
             accent: SteelmanTheme.color(for: clip.side),
             badge: clip.containsProfanity ? "Profanity" : nil,
@@ -272,5 +322,24 @@ private struct ArgumentFeedCard: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
+        .overlay { if isLocked { lockedOverlay } }
+    }
+
+    /// Frosts the peek page and swallows taps, so its transport can't be driven.
+    private var lockedOverlay: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+            VStack(spacing: 14) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 44))
+                Text("Finish listening to this one first")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+            }
+            .foregroundStyle(.secondary)
+            .padding()
+        }
+        .contentShape(Rectangle())
     }
 }

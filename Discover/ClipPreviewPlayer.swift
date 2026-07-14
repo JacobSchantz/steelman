@@ -5,19 +5,26 @@ import Combine
 /// Audition player for Discover cards — ported from keepMovin's ClipPreviewPlayer.
 /// Plays file/remote audio, or speaks text answers via AVSpeechSynthesizer when no audio URL.
 ///
-/// Progress is one-way for product rules: you can re-listen / seek backward, but never
-/// jump past the farthest point already heard (`farthestProgress`).
+/// Two product rules are enforced here rather than in the UI, so they can't be bypassed:
+/// - **No forward seeking.** `seek(to:)` clamps to the current position, so the only way
+///   forward is to listen. Skipping backward and re-listening is allowed.
+/// - **Published state mirrors the engine.** `isPlaying` is read from AVPlayer's
+///   `timeControlStatus` / AVSpeechSynthesizer's `isSpeaking`+`isPaused`, and `progress`
+///   comes from the periodic time observer (audio) or the spoken character range (TTS).
+///   Nothing here reports a state the engine isn't actually in.
 @MainActor
 final class ClipPreviewPlayer: ObservableObject {
-    @Published var isPlaying = false
-    @Published var progress: TimeInterval = 0
-    /// Furthest position reached by natural playback (not seeks). Scrubbing is capped here.
-    @Published var farthestProgress: TimeInterval = 0
-    @Published var duration: TimeInterval = 0
-    @Published var bufferedProgress: TimeInterval = 0
-    @Published var errorMessage: String?
+    @Published private(set) var isPlaying = false
+    @Published private(set) var progress: TimeInterval = 0
+    @Published private(set) var duration: TimeInterval = 0
+    @Published private(set) var bufferedProgress: TimeInterval = 0
+    @Published private(set) var errorMessage: String?
     /// True once the active clip has been heard all the way through at least once.
-    @Published var hasFullyHeardCurrent = false
+    @Published private(set) var hasFullyHeardCurrent = false
+    /// Id of the clip that most recently played to its natural end. The feed keys its
+    /// unlock off this rather than off `hasFullyHeardCurrent` + "whatever is on screen",
+    /// so a clip change mid-completion can't credit the wrong card.
+    @Published private(set) var finishedClipID: UUID?
 
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -26,16 +33,19 @@ final class ClipPreviewPlayer: ObservableObject {
     private var endObserver: NSObjectProtocol?
     private var clip: ArgumentClip?
     private var sessionConfigured = false
-    private var userPaused = false
     private var didAttemptRecovery = false
+    /// Intent, not display state: the user pressed pause, so re-entering the same card
+    /// must not silently resume. Never used to decide what the controls show.
+    private var pausedByUser = false
 
     // TTS path
     private let synthesizer = AVSpeechSynthesizer()
     private var ttsDelegate: TTSDelegate?
     private var isTTS = false
-    private var ttsTimer: Timer?
-    private var ttsStartDate: Date?
-    private var ttsEstimatedDuration: TimeInterval = 0
+    /// The full answer text. Progress is (characters spoken / characters total).
+    private var ttsFullText = ""
+    /// Where in `ttsFullText` the live utterance starts (non-zero after a backward seek).
+    private var ttsUtteranceOffset = 0
 
     private struct ClipKey: Hashable {
         let answerId: UUID
@@ -58,7 +68,9 @@ final class ClipPreviewPlayer: ObservableObject {
         let k = key(for: clip)
 
         if k == activeKey, (player != nil || isTTS), errorMessage == nil {
-            guard !userPaused else { return }
+            // Same card re-entered. Don't fight an explicit pause, and don't restart a
+            // clip that already ran to the end — the user has to press play for that.
+            guard !pausedByUser, !hasFullyHeardCurrent else { return }
             resumeCurrent()
             return
         }
@@ -70,16 +82,17 @@ final class ClipPreviewPlayer: ObservableObject {
         self.activeKey = k
         self.errorMessage = nil
         self.didAttemptRecovery = false
-        self.userPaused = false
+        self.pausedByUser = false
         self.progress = clip.startTime
-        self.farthestProgress = clip.startTime
         self.bufferedProgress = clip.startTime
         self.hasFullyHeardCurrent = false
+        self.finishedClipID = nil
 
         // Prefer real audio (segment file or original URL).
         let playURL = url ?? clip.audioURL
         if let playURL {
             isTTS = false
+            ttsFullText = ""
             duration = max(clip.duration, 1)
             startAudio(url: playURL, start: clip.startTime, key: k)
             return
@@ -87,7 +100,7 @@ final class ClipPreviewPlayer: ObservableObject {
 
         // Text-only answer → speak it.
         isTTS = true
-        startTTS(text: clip.answerText, estimated: max(clip.duration, 8))
+        startTTS(fullText: clip.answerText, from: 0, estimatedTotal: max(clip.duration, 8))
     }
 
     func preload(clip: ArgumentClip) {
@@ -116,68 +129,66 @@ final class ClipPreviewPlayer: ObservableObject {
         }
 
         if isTTS {
-            if synthesizer.isSpeaking && !synthesizer.isPaused {
-                synthesizer.pauseSpeaking(at: .word)
-                isPlaying = false
-                userPaused = true
-                pauseTTSTimer()
-            } else if synthesizer.isPaused {
-                synthesizer.continueSpeaking()
-                isPlaying = true
-                userPaused = false
-                resumeTTSTimer()
-            } else if let clip {
-                // Finished or not started — restart from beginning (or resume progress via remaining text).
-                if hasFullyHeardCurrent || progress >= duration - completionSlop {
-                    startTTS(text: clip.answerText, estimated: max(duration, 8))
-                } else if progress > 0.5 {
-                    seek(to: progress)
-                } else {
-                    startTTS(text: clip.answerText, estimated: max(duration, 8))
-                }
-            }
+            togglePlayPauseTTS()
             return
         }
 
         guard let player else { return }
-        // Prefer actual AVPlayer rate over our published flag so the button stays honest.
-        let actuallyPlaying = player.rate > 0.01 || player.timeControlStatus == .playing
-        if actuallyPlaying || isPlaying {
-            player.pause()
-            isPlaying = false
-            userPaused = true
-        } else {
-            userPaused = false
-            // Finished clip: restart from the beginning so play is meaningful again.
+        if player.timeControlStatus == .paused {
+            pausedByUser = false
             if hasFullyHeardCurrent, duration > 0, progress >= duration - completionSlop {
-                player.seek(to: .zero) { [weak player] _ in
+                // Finished clip: restart from the top so play is meaningful again.
+                player.seek(to: .zero) { [weak self, weak player] _ in
                     Task { @MainActor in
                         player?.play()
-                        self.progress = 0
-                        self.isPlaying = true
+                        self?.progress = 0
+                        self?.syncPlaybackStateFromEngine()
                     }
                 }
             } else {
                 player.play()
-                isPlaying = true
             }
+        } else {
+            pausedByUser = true
+            player.pause()
         }
+        syncPlaybackStateFromEngine()
     }
 
-    /// Seek, clamped so you cannot jump past content not yet heard.
-    func seek(to seconds: TimeInterval) {
-        let upper = max(farthestProgress, 0)
-        let clamped = min(max(0, seconds), min(upper, max(duration, 1)))
-        progress = clamped
-        if isTTS {
-            guard let clip else { return }
-            let words = clip.answerText.split(whereSeparator: { $0.isWhitespace || $0.isNewline })
-            let fraction = duration > 0 ? clamped / duration : 0
-            let startWord = min(Int(Double(words.count) * fraction), max(words.count - 1, 0))
-            let remaining = words.dropFirst(startWord).joined(separator: " ")
-            startTTS(text: remaining, estimated: max(duration - clamped, 4), progressOffset: clamped)
+    private func togglePlayPauseTTS() {
+        if synthesizer.isSpeaking, !synthesizer.isPaused {
+            pausedByUser = true
+            synthesizer.pauseSpeaking(at: .word)
             return
         }
+        if synthesizer.isPaused {
+            pausedByUser = false
+            synthesizer.continueSpeaking()
+            return
+        }
+        // Not speaking: either finished or never started.
+        guard let clip else { return }
+        pausedByUser = false
+        let restart = hasFullyHeardCurrent || progress >= duration - completionSlop
+        let offset = restart ? 0 : ttsOffset(forSeconds: progress)
+        startTTS(fullText: clip.answerText, from: offset, estimatedTotal: max(duration, 8))
+    }
+
+    /// Seek — **backward only**. The clamp to `progress` is what makes forward skipping
+    /// impossible: the scrubber is a read-only indicator and this is the only seek path.
+    func seek(to seconds: TimeInterval) {
+        let clamped = min(max(0, seconds), progress)
+
+        if isTTS {
+            guard !ttsFullText.isEmpty else { return }
+            // TTS can't be scrubbed, so re-speak from the word boundary at that point.
+            // That necessarily resumes playback; `isPlaying` will say so truthfully.
+            pausedByUser = false
+            startTTS(fullText: ttsFullText, from: ttsOffset(forSeconds: clamped), estimatedTotal: duration)
+            return
+        }
+
+        progress = clamped
         player?.seek(to: CMTime(seconds: clamped, preferredTimescale: 600))
     }
 
@@ -188,14 +199,16 @@ final class ClipPreviewPlayer: ObservableObject {
         clip = nil
         activeKey = nil
         progress = 0
-        farthestProgress = 0
         bufferedProgress = 0
         duration = 0
         errorMessage = nil
         isPlaying = false
-        userPaused = false
+        pausedByUser = false
         isTTS = false
+        ttsFullText = ""
+        ttsUtteranceOffset = 0
         hasFullyHeardCurrent = false
+        finishedClipID = nil
     }
 
     func teardownAll() {
@@ -216,8 +229,8 @@ final class ClipPreviewPlayer: ObservableObject {
                 observeTimeControl(warm)
                 observePlaybackEnd(warm.currentItem)
                 warm.play()
-                syncPlayingFromPlayer()
                 addObserver()
+                syncPlaybackStateFromEngine()
                 return
             }
         }
@@ -230,30 +243,27 @@ final class ClipPreviewPlayer: ObservableObject {
         observeItem(item)
         observeTimeControl(newPlayer)
         observePlaybackEnd(item)
-        newPlayer.seek(to: CMTime(seconds: start, preferredTimescale: 600)) { [weak newPlayer] _ in
+        newPlayer.seek(to: CMTime(seconds: start, preferredTimescale: 600)) { [weak self, weak newPlayer] _ in
             Task { @MainActor in
                 newPlayer?.play()
-                self.syncPlayingFromPlayer()
+                self?.syncPlaybackStateFromEngine()
             }
         }
-        // Optimistic until rate observer fires; still better than staying on "play".
-        isPlaying = true
         addObserver()
+        syncPlaybackStateFromEngine()
     }
 
     private func resumeCurrent() {
         if isTTS {
             if synthesizer.isPaused {
                 synthesizer.continueSpeaking()
-                resumeTTSTimer()
             } else if !synthesizer.isSpeaking, let clip {
-                startTTS(text: clip.answerText, estimated: max(duration, 8))
+                startTTS(fullText: clip.answerText, from: ttsUtteranceOffset, estimatedTotal: max(duration, 8))
             }
-            isPlaying = true
             return
         }
         player?.play()
-        isPlaying = true
+        syncPlaybackStateFromEngine()
     }
 
     private func stopPlayersOnly() {
@@ -263,10 +273,12 @@ final class ClipPreviewPlayer: ObservableObject {
         teardownTimeControlObserver()
         teardownEndObserver()
         player = nil
-        synthesizer.stopSpeaking(at: .immediate)
-        ttsTimer?.invalidate()
-        ttsTimer = nil
+        // Drop the delegate first: stopSpeaking fires didCancel, and we don't want the
+        // outgoing clip's callbacks writing state for the incoming one.
+        synthesizer.delegate = nil
         ttsDelegate = nil
+        synthesizer.stopSpeaking(at: .immediate)
+        isPlaying = false
     }
 
     private func addObserver() {
@@ -279,33 +291,38 @@ final class ClipPreviewPlayer: ObservableObject {
                    itemDuration.isFinite, itemDuration > 0 {
                     self.duration = itemDuration
                 }
+                guard seconds.isFinite else { return }
                 self.progress = min(max(seconds, 0), self.duration)
-                if seconds > self.farthestProgress {
-                    self.farthestProgress = min(seconds, self.duration)
-                }
                 self.bufferedProgress = self.loadedSeconds()
                 self.markFullyHeardIfNeeded()
-                self.syncPlayingFromPlayer()
+                self.syncPlaybackStateFromEngine()
             }
         }
     }
 
-    private func syncPlayingFromPlayer() {
-        guard !isTTS, let player else { return }
-        // Don't fight an explicit user pause, but clear "playing" when the engine stops.
-        let ratePlaying = player.rate > 0.01
-        let waiting = player.timeControlStatus == .waitingToPlayAtSpecifiedRate
-        let enginePlaying = ratePlaying || waiting
-        if userPaused {
-            isPlaying = false
-        } else {
-            isPlaying = enginePlaying
+    /// The single source of truth for `isPlaying`: whatever the engine is actually doing.
+    private func syncPlaybackStateFromEngine() {
+        if isTTS {
+            isPlaying = synthesizer.isSpeaking && !synthesizer.isPaused
+            return
         }
+        guard let player else {
+            isPlaying = false
+            return
+        }
+        // `.waitingToPlayAtSpecifiedRate` is a stall inside a play intent — the transport
+        // is live, so the button stays on "pause" rather than flicking back to "play".
+        isPlaying = player.timeControlStatus != .paused
     }
 
     private func markFullyHeardIfNeeded() {
-        guard duration > 0, farthestProgress >= duration - completionSlop else { return }
+        guard duration > 0, progress >= duration - completionSlop else { return }
+        markFullyHeard()
+    }
+
+    private func markFullyHeard() {
         hasFullyHeardCurrent = true
+        finishedClipID = clip?.id
     }
 
     private func loadedSeconds() -> TimeInterval {
@@ -348,7 +365,7 @@ final class ClipPreviewPlayer: ObservableObject {
         teardownTimeControlObserver()
         timeControlObserver = player.observe(\.timeControlStatus, options: [.new, .initial]) { [weak self] _, _ in
             Task { @MainActor in
-                self?.syncPlayingFromPlayer()
+                self?.syncPlaybackStateFromEngine()
             }
         }
     }
@@ -363,11 +380,9 @@ final class ClipPreviewPlayer: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                self.isPlaying = false
-                self.userPaused = true
                 self.progress = self.duration
-                self.farthestProgress = self.duration
-                self.hasFullyHeardCurrent = true
+                self.markFullyHeard()
+                self.syncPlaybackStateFromEngine()
             }
         }
     }
@@ -398,7 +413,7 @@ final class ClipPreviewPlayer: ObservableObject {
             if itemDuration.isFinite, itemDuration > 0 {
                 duration = itemDuration
             }
-            syncPlayingFromPlayer()
+            syncPlaybackStateFromEngine()
         case .failed:
             if !didAttemptRecovery, let clip, let url = clip.audioURL {
                 didAttemptRecovery = true
@@ -406,8 +421,8 @@ final class ClipPreviewPlayer: ObservableObject {
                 teardownEndObserver()
                 startAudio(url: url, start: max(progress, clip.startTime), key: key(for: clip))
             } else {
-                isPlaying = false
                 errorMessage = "Couldn't play this clip. Tap play to retry."
+                syncPlaybackStateFromEngine()
             }
         default:
             break
@@ -416,82 +431,84 @@ final class ClipPreviewPlayer: ObservableObject {
 
     // MARK: - TTS
 
-    private func startTTS(text: String, estimated: TimeInterval, progressOffset: TimeInterval = 0) {
+    /// Speak `fullText` starting at UTF-16 offset `from`. Progress is reported as the
+    /// fraction of `fullText` the synthesizer has actually spoken, so the bar tracks real
+    /// speech instead of a wall clock that drifts from it.
+    private func startTTS(fullText: String, from offset: Int, estimatedTotal: TimeInterval) {
+        synthesizer.delegate = nil
+        ttsDelegate = nil
         synthesizer.stopSpeaking(at: .immediate)
-        ttsTimer?.invalidate()
 
-        let utterance = AVSpeechUtterance(string: text)
+        let text = fullText as NSString
+        ttsFullText = fullText
+        ttsUtteranceOffset = min(max(0, offset), text.length)
+        duration = max(estimatedTotal, 1)
+        progress = ttsProgress(spokenCharacters: ttsUtteranceOffset)
+        // Speech is synthesized locally — there's nothing to buffer.
+        bufferedProgress = duration
+
+        let remaining = text.substring(from: ttsUtteranceOffset)
+        guard !remaining.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            markFullyHeard()
+            syncPlaybackStateFromEngine()
+            return
+        }
+
+        let utterance = AVSpeechUtterance(string: remaining)
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
 
-        // Keep overall duration stable when seeking mid-utterance.
-        if progressOffset <= 0 {
-            duration = estimated
-        } else {
-            duration = max(duration, estimated + progressOffset)
-        }
-        progress = progressOffset
-        // farthestProgress only moves forward with real listening; don't reduce on seek-back restart.
-        farthestProgress = max(farthestProgress, progressOffset)
-        bufferedProgress = duration
-        ttsEstimatedDuration = estimated
-        ttsStartDate = Date()
-        userPaused = false
-
         let delegate = TTSDelegate(
+            onWillSpeakRange: { [weak self] range in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.progress = self.ttsProgress(
+                        spokenCharacters: self.ttsUtteranceOffset + range.location + range.length
+                    )
+                    self.syncPlaybackStateFromEngine()
+                }
+            },
             onFinish: { [weak self] in
                 Task { @MainActor in
-                    self?.isPlaying = false
-                    self?.userPaused = true
-                    self?.progress = self?.duration ?? 0
-                    self?.farthestProgress = self?.duration ?? 0
-                    self?.hasFullyHeardCurrent = true
-                    self?.ttsTimer?.invalidate()
+                    guard let self else { return }
+                    self.progress = self.duration
+                    self.markFullyHeard()
+                    self.syncPlaybackStateFromEngine()
                 }
             },
-            onCancel: { [weak self] in
-                Task { @MainActor in
-                    self?.isPlaying = false
-                    self?.ttsTimer?.invalidate()
-                }
-            },
-            onPause: { [weak self] in
-                Task { @MainActor in
-                    self?.isPlaying = false
-                }
-            },
-            onContinue: { [weak self] in
-                Task { @MainActor in
-                    self?.isPlaying = true
-                }
+            onStateChange: { [weak self] in
+                Task { @MainActor in self?.syncPlaybackStateFromEngine() }
             }
         )
         ttsDelegate = delegate
         synthesizer.delegate = delegate
         synthesizer.speak(utterance)
-        isPlaying = true
-        resumeTTSTimer()
+        syncPlaybackStateFromEngine()
     }
 
-    private func resumeTTSTimer() {
-        ttsTimer?.invalidate()
-        ttsStartDate = Date().addingTimeInterval(-progress)
-        ttsTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self, self.isPlaying, let start = self.ttsStartDate else { return }
-                let elapsed = Date().timeIntervalSince(start)
-                self.progress = min(elapsed, self.duration)
-                if self.progress > self.farthestProgress {
-                    self.farthestProgress = self.progress
-                }
-                self.markFullyHeardIfNeeded()
-            }
-        }
+    /// Position on the bar for a count of characters spoken out of the whole answer.
+    private func ttsProgress(spokenCharacters chars: Int) -> TimeInterval {
+        let total = (ttsFullText as NSString).length
+        guard total > 0, duration > 0 else { return 0 }
+        let fraction = min(max(Double(chars) / Double(total), 0), 1)
+        return fraction * duration
     }
 
-    private func pauseTTSTimer() {
-        ttsTimer?.invalidate()
-        ttsTimer = nil
+    /// The inverse: the word-aligned UTF-16 offset into the answer for a point on the bar.
+    private func ttsOffset(forSeconds seconds: TimeInterval) -> Int {
+        let text = ttsFullText as NSString
+        guard text.length > 0, duration > 0 else { return 0 }
+        let fraction = min(max(seconds / duration, 0), 1)
+        let raw = min(Int(fraction * Double(text.length)), text.length)
+        guard raw > 0 else { return 0 }
+        // Snap back to the start of the word containing `raw` — mid-word is unspeakable.
+        let preceding = text.rangeOfCharacter(
+            from: .whitespacesAndNewlines,
+            options: .backwards,
+            range: NSRange(location: 0, length: raw)
+        )
+        guard preceding.location != NSNotFound else { return 0 }
+        return min(preceding.location + preceding.length, text.length)
     }
 
     private func configureSession() {
@@ -520,21 +537,32 @@ final class ClipPreviewPlayer: ObservableObject {
 
 /// Thin NSObject bridge for AVSpeechSynthesizerDelegate.
 private final class TTSDelegate: NSObject, AVSpeechSynthesizerDelegate {
+    let onWillSpeakRange: (NSRange) -> Void
     let onFinish: () -> Void
-    let onCancel: () -> Void
-    let onPause: () -> Void
-    let onContinue: () -> Void
+    /// Fired for start / pause / continue / cancel — the player re-reads the synthesizer
+    /// rather than being told what state to be in.
+    let onStateChange: () -> Void
 
     init(
+        onWillSpeakRange: @escaping (NSRange) -> Void,
         onFinish: @escaping () -> Void,
-        onCancel: @escaping () -> Void,
-        onPause: @escaping () -> Void = {},
-        onContinue: @escaping () -> Void = {}
+        onStateChange: @escaping () -> Void
     ) {
+        self.onWillSpeakRange = onWillSpeakRange
         self.onFinish = onFinish
-        self.onCancel = onCancel
-        self.onPause = onPause
-        self.onContinue = onContinue
+        self.onStateChange = onStateChange
+    }
+
+    func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        willSpeakRangeOfSpeechString characterRange: NSRange,
+        utterance: AVSpeechUtterance
+    ) {
+        onWillSpeakRange(characterRange)
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        onStateChange()
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
@@ -542,14 +570,14 @@ private final class TTSDelegate: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        onCancel()
+        onStateChange()
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didPause utterance: AVSpeechUtterance) {
-        onPause()
+        onStateChange()
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didContinue utterance: AVSpeechUtterance) {
-        onContinue()
+        onStateChange()
     }
 }
