@@ -1,1 +1,13 @@
-{"updated_at":"2026-07-14T20:15:16.896Z","description":"Voice note","results":[],"platform":"ios","id":"voice-5b027d42","test_instructions":[],"created_at":"2026-07-14T20:15:16.896Z","image_urls":["screenshot-E6731028-9F75-4E8D-A2FF-232480BD718B.jpg"]}
+{
+  "updated_at": "2026-07-14T20:15:36.000Z",
+  "description": "Okay, nice. Seems like you got some of the ideas right. Let's... You can just get rid of the album art, I think, entirely on a particular item. Because we won't really end up having that. And then I think it could just be a transcription of the text. So the text could be there, and then we could just have it play. So get rid of the album art and the title for a particular item. Also, let's bring down the question name. Let's bring it down a little lower. So that we can see it clearly on the page. Also, I don't think you need to change the background for the question. The question can just be the same background color. Thank you.",
+  "results": [],
+  "platform": "ios",
+  "id": "voice-5b027d42",
+  "test_instructions": [],
+  "created_at": "2026-07-14T20:15:16.896Z",
+  "image_urls": [
+    "screenshot-E6731028-9F75-4E8D-A2FF-232480BD718B.jpg"
+  ],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
