@@ -37,3 +37,23 @@ These aren't about *when* to steelman—they're the discipline that separates th
 ---
 
 *Bottom line: go almost everywhere. Discomfort isn't the limit—harm is. The line isn't "topics we don't touch," it's "the point where the strongest version stops being a thought and starts being ammunition."*
+
+---
+
+## iOS app
+
+Native SwiftUI app that walks you through the discipline: claim → steelman → strongest rebuttal → earned opinion.
+
+```bash
+# Generate Xcode project (requires xcodegen)
+xcodegen generate
+open Steelman.xcodeproj
+
+# Or build + install on a connected iPhone via testables
+testables build ios
+# or: ./build_local.sh
+```
+
+- **Bundle ID:** `com.steelman.app`
+- **Testables:** `TestablesKit` banner + `testables/{queue,agent,human,done}/`
+- **PAT key (in-app):** `github_pat_for_steelman_testables`

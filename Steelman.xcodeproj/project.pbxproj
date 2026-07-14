@@ -1,0 +1,557 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3CA79EB70EA47E94AB2D25DB /* SessionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE04BFE277D1039B623AF66 /* SessionEditorView.swift */; };
+		3E3278C204F4B131C847062D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2BAB92DAE6ABCA50B771F689 /* Assets.xcassets */; };
+		4686BC04C02A1DB3BA6B22E2 /* SteelmanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E72FDC645409CF702BCB44 /* SteelmanSession.swift */; };
+		5BAA244ABC6084EF39A18016 /* TestablesKit in Frameworks */ = {isa = PBXBuildFile; productRef = 7D4297E67B264661BD81DDB3 /* TestablesKit */; };
+		5BAE9771D8C8A8BEACCEEAC2 /* GitInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0003255FA7958FCD40964A /* GitInfo.swift */; };
+		651D50002CFC4F65F1CD7A0C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0F88069CE1C3ACB1F9D7E2 /* ContentView.swift */; };
+		68CA64163B823AE6A1D3EB8D /* TestingViewModel+Shared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C672E8E6CB101AF5A2784B7 /* TestingViewModel+Shared.swift */; };
+		8FFAE2EF55F0EB00960144D4 /* testables in Resources */ = {isa = PBXBuildFile; fileRef = 311DF26788DECB2F51A77502 /* testables */; };
+		9733ADE33CBC336028BD066B /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA5EE5AD730D726513BED80 /* Rules.swift */; };
+		A65A733E11DB2AFADDA41F4F /* TestablesWiringCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222D94FC46AAFAF9058DE074 /* TestablesWiringCheck.swift */; };
+		C0503EAF195BA4B653CE403E /* SteelmanConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93AF9CB9BA376C9417F53D1 /* SteelmanConfig.swift */; };
+		CC12BFB541DF33058F7F5D38 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34E2FA148EBBF7E511E967FD /* SessionStore.swift */; };
+		E7873967FBE1504A9C47E872 /* SessionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6053AB6565C985B381A7D62B /* SessionListView.swift */; };
+		EA32918CC0ADA3A87A810798 /* TestablesKit in Frameworks */ = {isa = PBXBuildFile; productRef = 44C9842A20D48DCEA4D93B58 /* TestablesKit */; };
+		F2887B0D2B72C339F80BF254 /* SteelmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4D42590E202973E1CF89DD /* SteelmanApp.swift */; };
+		FCD67019DA2F58DD8464FA55 /* RulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D30FF8993EC5338A273206 /* RulesView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		00E72FDC645409CF702BCB44 /* SteelmanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanSession.swift; sourceTree = "<group>"; };
+		0EA82709B0983CAE4E65DF8F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1E0F88069CE1C3ACB1F9D7E2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		222D94FC46AAFAF9058DE074 /* TestablesWiringCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestablesWiringCheck.swift; sourceTree = "<group>"; };
+		2BAB92DAE6ABCA50B771F689 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		311DF26788DECB2F51A77502 /* testables */ = {isa = PBXFileReference; lastKnownFileType = folder; path = testables; sourceTree = SOURCE_ROOT; };
+		34E2FA148EBBF7E511E967FD /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		5C672E8E6CB101AF5A2784B7 /* TestingViewModel+Shared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TestingViewModel+Shared.swift"; sourceTree = "<group>"; };
+		6053AB6565C985B381A7D62B /* SessionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListView.swift; sourceTree = "<group>"; };
+		7B4D42590E202973E1CF89DD /* SteelmanApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanApp.swift; sourceTree = "<group>"; };
+		8B66172A95BB7D87AC344750 /* Steelman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Steelman.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8EA5EE5AD730D726513BED80 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
+		8EE04BFE277D1039B623AF66 /* SessionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionEditorView.swift; sourceTree = "<group>"; };
+		949D1AB19E4A587F7D07A964 /* SteelmanTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SteelmanTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A93AF9CB9BA376C9417F53D1 /* SteelmanConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanConfig.swift; sourceTree = "<group>"; };
+		AE0003255FA7958FCD40964A /* GitInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitInfo.swift; sourceTree = "<group>"; };
+		C8D30FF8993EC5338A273206 /* RulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A6503DD4CE7B77B89EB7A9DF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EA32918CC0ADA3A87A810798 /* TestablesKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3641AA410A98EFACCA425A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5BAA244ABC6084EF39A18016 /* TestablesKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		063A17C154D315B4783B1F0A /* testables */ = {
+			isa = PBXGroup;
+			children = (
+				222D94FC46AAFAF9058DE074 /* TestablesWiringCheck.swift */,
+			);
+			path = testables;
+			sourceTree = "<group>";
+		};
+		0DCCFC538FDB1CFDA23AD15C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8B66172A95BB7D87AC344750 /* Steelman.app */,
+				949D1AB19E4A587F7D07A964 /* SteelmanTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		395F76641A585AFDE80AE534 = {
+			isa = PBXGroup;
+			children = (
+				2BAB92DAE6ABCA50B771F689 /* Assets.xcassets */,
+				0EA82709B0983CAE4E65DF8F /* Info.plist */,
+				7B4D42590E202973E1CF89DD /* SteelmanApp.swift */,
+				A93AF9CB9BA376C9417F53D1 /* SteelmanConfig.swift */,
+				311DF26788DECB2F51A77502 /* testables */,
+				7971D4EE2AEF296860CE1933 /* Generated */,
+				E47E375A0F3E8063EB982CCC /* Models */,
+				612E3BFE779BA1C5758EF766 /* Services */,
+				063A17C154D315B4783B1F0A /* testables */,
+				ADFCB36855C43D8DC77C54CE /* Testing */,
+				DF486DC6767AF3FFDAA005F1 /* Views */,
+				0DCCFC538FDB1CFDA23AD15C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		612E3BFE779BA1C5758EF766 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				34E2FA148EBBF7E511E967FD /* SessionStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		7971D4EE2AEF296860CE1933 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				AE0003255FA7958FCD40964A /* GitInfo.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		ADFCB36855C43D8DC77C54CE /* Testing */ = {
+			isa = PBXGroup;
+			children = (
+				5C672E8E6CB101AF5A2784B7 /* TestingViewModel+Shared.swift */,
+			);
+			path = Testing;
+			sourceTree = "<group>";
+		};
+		DF486DC6767AF3FFDAA005F1 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1E0F88069CE1C3ACB1F9D7E2 /* ContentView.swift */,
+				C8D30FF8993EC5338A273206 /* RulesView.swift */,
+				8EE04BFE277D1039B623AF66 /* SessionEditorView.swift */,
+				6053AB6565C985B381A7D62B /* SessionListView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		E47E375A0F3E8063EB982CCC /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				8EA5EE5AD730D726513BED80 /* Rules.swift */,
+				00E72FDC645409CF702BCB44 /* SteelmanSession.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D92020619C61EA1871CFE455 /* Steelman */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE8A115D20A271CBF7CB2EA6 /* Build configuration list for PBXNativeTarget "Steelman" */;
+			buildPhases = (
+				2DAD2C52031B3F6A3284A0D9 /* Write Git Info */,
+				03F2490FC847D8905703F3DE /* Sources */,
+				4BA8B582BFD5C5D8D0FD64A8 /* Resources */,
+				B3641AA410A98EFACCA425A4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Steelman;
+			packageProductDependencies = (
+				7D4297E67B264661BD81DDB3 /* TestablesKit */,
+			);
+			productName = Steelman;
+			productReference = 8B66172A95BB7D87AC344750 /* Steelman.app */;
+			productType = "com.apple.product-type.application";
+		};
+		FA1DE789E003D87164B85CF0 /* SteelmanTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BE83CF9AD1923E00D6C4919A /* Build configuration list for PBXNativeTarget "SteelmanTests" */;
+			buildPhases = (
+				48EBCABC5265FA2F23EBFEF5 /* Sources */,
+				A6503DD4CE7B77B89EB7A9DF /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SteelmanTests;
+			packageProductDependencies = (
+				44C9842A20D48DCEA4D93B58 /* TestablesKit */,
+			);
+			productName = SteelmanTests;
+			productReference = 949D1AB19E4A587F7D07A964 /* SteelmanTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A3DFC7F7B1A09185F435D063 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					D92020619C61EA1871CFE455 = {
+						DevelopmentTeam = 563V2QK49N;
+						ProvisioningStyle = Automatic;
+					};
+					FA1DE789E003D87164B85CF0 = {
+						DevelopmentTeam = 563V2QK49N;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = F32538397E849C7CF35AA33E /* Build configuration list for PBXProject "Steelman" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 395F76641A585AFDE80AE534;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2DE86530FA48C35D4A021D2D /* XCRemoteSwiftPackageReference "testables" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0DCCFC538FDB1CFDA23AD15C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D92020619C61EA1871CFE455 /* Steelman */,
+				FA1DE789E003D87164B85CF0 /* SteelmanTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4BA8B582BFD5C5D8D0FD64A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E3278C204F4B131C847062D /* Assets.xcassets in Resources */,
+				8FFAE2EF55F0EB00960144D4 /* testables in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		2DAD2C52031B3F6A3284A0D9 /* Write Git Info */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Write Git Info";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "bash ${SRCROOT}/Scripts/write_git_info.sh";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		03F2490FC847D8905703F3DE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				651D50002CFC4F65F1CD7A0C /* ContentView.swift in Sources */,
+				5BAE9771D8C8A8BEACCEEAC2 /* GitInfo.swift in Sources */,
+				9733ADE33CBC336028BD066B /* Rules.swift in Sources */,
+				FCD67019DA2F58DD8464FA55 /* RulesView.swift in Sources */,
+				3CA79EB70EA47E94AB2D25DB /* SessionEditorView.swift in Sources */,
+				E7873967FBE1504A9C47E872 /* SessionListView.swift in Sources */,
+				CC12BFB541DF33058F7F5D38 /* SessionStore.swift in Sources */,
+				F2887B0D2B72C339F80BF254 /* SteelmanApp.swift in Sources */,
+				C0503EAF195BA4B653CE403E /* SteelmanConfig.swift in Sources */,
+				4686BC04C02A1DB3BA6B22E2 /* SteelmanSession.swift in Sources */,
+				68CA64163B823AE6A1D3EB8D /* TestingViewModel+Shared.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		48EBCABC5265FA2F23EBFEF5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A65A733E11DB2AFADDA41F4F /* TestablesWiringCheck.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		19D2A934193AE7AAFDC635EF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 563V2QK49N;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.steelman.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4CDDBC594047AFB9157E31FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.steelman.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		73BD834D32A77998EC464825 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 563V2QK49N;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		88504120788D1B7C5BC59E58 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 563V2QK49N;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E6A9D14130DE3878A9080B14 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 563V2QK49N;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.steelman.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F633818E6A6DB65DD20538FB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.steelman.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BE83CF9AD1923E00D6C4919A /* Build configuration list for PBXNativeTarget "SteelmanTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E6A9D14130DE3878A9080B14 /* Debug */,
+				19D2A934193AE7AAFDC635EF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CE8A115D20A271CBF7CB2EA6 /* Build configuration list for PBXNativeTarget "Steelman" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4CDDBC594047AFB9157E31FD /* Debug */,
+				F633818E6A6DB65DD20538FB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F32538397E849C7CF35AA33E /* Build configuration list for PBXProject "Steelman" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				88504120788D1B7C5BC59E58 /* Debug */,
+				73BD834D32A77998EC464825 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2DE86530FA48C35D4A021D2D /* XCRemoteSwiftPackageReference "testables" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/JacobSchantz/testables";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		44C9842A20D48DCEA4D93B58 /* TestablesKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2DE86530FA48C35D4A021D2D /* XCRemoteSwiftPackageReference "testables" */;
+			productName = TestablesKit;
+		};
+		7D4297E67B264661BD81DDB3 /* TestablesKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2DE86530FA48C35D4A021D2D /* XCRemoteSwiftPackageReference "testables" */;
+			productName = TestablesKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A3DFC7F7B1A09185F435D063 /* Project object */;
+}

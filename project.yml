@@ -1,0 +1,80 @@
+name: Steelman
+options:
+  bundleIdPrefix: com.steelman
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+packages:
+  TestablesKit:
+    url: https://github.com/JacobSchantz/testables
+    branch: main
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    INFOPLIST_FILE: Info.plist
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: "563V2QK49N"
+
+targets:
+  Steelman:
+    type: application
+    platform: iOS
+    sources:
+      - path: SteelmanApp.swift
+      - path: SteelmanConfig.swift
+      - path: Testing
+      - path: Models
+      - path: Views
+      - path: Services
+      - path: Assets.xcassets
+      - path: Info.plist
+      - path: testables
+        type: folder
+        buildPhase: resources
+      - path: Generated
+    preBuildScripts:
+      - name: Write Git Info
+        script: "bash ${SRCROOT}/Scripts/write_git_info.sh"
+    dependencies:
+      - package: TestablesKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.steelman.app
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Steelman
+        CFBundleShortVersionString: "1.0"
+        ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: "Steelman records voice notes for test feedback."
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+  SteelmanTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: testables
+        includes:
+          - "**/*.swift"
+    dependencies:
+      - package: TestablesKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.steelman.app.tests
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        DEVELOPMENT_TEAM: "563V2QK49N"
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
