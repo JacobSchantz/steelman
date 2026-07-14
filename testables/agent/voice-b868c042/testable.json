@@ -1,1 +1,11 @@
-{"description":"Voice note","test_instructions":[],"platform":"ios","id":"voice-b868c042","created_at":"2026-07-14T20:17:43.976Z","results":[],"image_urls":[],"updated_at":"2026-07-14T20:17:43.976Z"}
+{
+  "description": "The lock gating doesn't quite work right. I was able to kind of get around it by scrolling to the end or something. Some way I was able to get around it and then I could just swipe continuously. Secondly, the question, instead of being just a pop-up there, it should take us to a whole new page. And the page should be kind of beautifully laid out in a way that lets us search by obviously just text matching, but we should also be able to search by maybe category or something like that for the questions. And again, the questions are now a whole paint instead of just a little pop-up sheet.",
+  "test_instructions": [],
+  "platform": "ios",
+  "id": "voice-b868c042",
+  "created_at": "2026-07-14T20:17:43.976Z",
+  "results": [],
+  "image_urls": [],
+  "updated_at": "2026-07-14T20:21:56.000Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
