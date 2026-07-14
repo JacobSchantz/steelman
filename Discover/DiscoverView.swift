@@ -16,7 +16,6 @@ struct DiscoverView: View {
 
     @State private var clips: [ArgumentClip] = []
     @State private var currentID: UUID?
-    @State private var isListMode = false
     @State private var lastHeardSide: [UUID: ArgumentSide] = [:]
     @State private var downloadingClips: Set<UUID> = []
     @State private var didInitialLoad = false
@@ -33,11 +32,6 @@ struct DiscoverView: View {
     private var currentClip: ArgumentClip? {
         if let currentID, let c = clips.first(where: { $0.id == currentID }) { return c }
         return clips.first
-    }
-
-    private var currentIndex: Int? {
-        guard let id = currentClip?.id else { return nil }
-        return clips.firstIndex { $0.id == id }
     }
 
     /// Highest index the user is allowed to land on: everything through the first
@@ -57,8 +51,6 @@ struct DiscoverView: View {
             Group {
                 if clips.isEmpty {
                     emptyState
-                } else if isListMode {
-                    listView
                 } else {
                     feed
                 }
@@ -66,15 +58,6 @@ struct DiscoverView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        withAnimation { isListMode.toggle() }
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .foregroundStyle(isListMode ? SteelmanTheme.accent : Color.primary)
-                    }
-                    .accessibilityLabel(isListMode ? "Show full-screen feed" : "Show as list")
-                }
                 ToolbarItem(placement: .principal) {
                     Text("Discover")
                         .font(.headline)
@@ -138,103 +121,6 @@ struct DiscoverView: View {
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
         .scrollIndicators(.hidden)
         .scrollPosition(id: $currentID, anchor: .top)
-    }
-
-    // MARK: - List layout
-
-    private var pastClips: [ArgumentClip] {
-        guard let i = currentIndex, i > 0 else { return [] }
-        return Array(clips[..<i])
-    }
-
-    private var upcomingClips: [ArgumentClip] {
-        guard let i = currentIndex else { return clips }
-        return Array(clips[(i + 1)...])
-    }
-
-    private var listView: some View {
-        ScrollViewReader { proxy in
-            List {
-                if !pastClips.isEmpty {
-                    Section("Already played · \(pastClips.count)") {
-                        ForEach(pastClips) { listRow($0, locked: false) }
-                    }
-                }
-                if let clip = currentClip {
-                    Section("Now playing") {
-                        listRow(clip, locked: false)
-                    }
-                }
-                if !upcomingClips.isEmpty {
-                    Section("Up next · \(upcomingClips.count)") {
-                        ForEach(Array(upcomingClips.enumerated()), id: \.element.id) { offset, clip in
-                            let globalIndex = (currentIndex ?? -1) + 1 + offset
-                            listRow(clip, locked: globalIndex > maxAllowedIndex)
-                        }
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-            .onAppear {
-                if let id = currentClip?.id {
-                    proxy.scrollTo(id, anchor: .center)
-                }
-            }
-        }
-    }
-
-    private func listRow(_ clip: ArgumentClip, locked: Bool) -> some View {
-        let isCurrent = clip.id == currentClip?.id
-        return Button {
-            guard !locked else { return }
-            if isCurrent {
-                clipPlayer.togglePlayPause()
-            } else {
-                currentID = clip.id
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Circle()
-                    .fill(SteelmanTheme.color(for: clip.side))
-                    .frame(width: 44, height: 44)
-                    .overlay {
-                        Text(clip.side == .a ? "A" : "B")
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
-                    }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(clip.sideLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    Text(clip.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    if locked {
-                        Text("Finish listening to unlock")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-
-                Spacer(minLength: 8)
-
-                if isCurrent {
-                    Image(systemName: clipPlayer.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
-                        .foregroundStyle(SteelmanTheme.accent)
-                } else if locked {
-                    Image(systemName: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .opacity(locked ? 0.45 : 1)
-        }
-        .buttonStyle(.plain)
-        .disabled(locked)
-        .id(clip.id)
     }
 
     private var emptyState: some View {
