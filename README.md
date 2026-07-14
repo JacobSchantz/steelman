@@ -50,7 +50,7 @@ Native SwiftUI app whose core loop is **Discover** — the same full-screen vert
 |---|---|
 | **Discover** | Vertical feed of argument clips. Hear side A → must hear side B (for that question) before A again. Text answers play via TTS; audio answers play as files. |
 | **Questions** | Browse / add debate prompts with two side labels. |
-| **Answer** | Submit text and/or mic audio; OpenRouter AI scores **lean side** + **profanity**. |
+| **Answer** | Submit text and/or **on-device dictation** (Apple Speech / same approach as ATG `speech_to_text`); OpenRouter AI scores **lean side** + **profanity**. |
 | **Rules** | The eight steelmanning rules. |
 
 ### Alternating-side rule

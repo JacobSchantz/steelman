@@ -5,7 +5,7 @@ struct SubmitAnswerView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
     @StateObject private var analysisService = AnswerAnalysisService()
-    @StateObject private var recorder = AnswerAudioRecorder()
+    @StateObject private var dictation = OnDeviceSpeechTranscriber()
 
     @State private var selectedQuestionId: UUID?
     @State private var claimedSide: ArgumentSide = .a
@@ -54,40 +54,43 @@ struct SubmitAnswerView: View {
                     }
 
                     Section {
-                        TextField("Write your strongest honest case…", text: $text, axis: .vertical)
+                        TextField("Write or dictate your strongest honest case…", text: $text, axis: .vertical)
                             .lineLimit(6...16)
+                            .disabled(dictation.isListening)
                     } header: {
-                        Text("Text answer")
+                        Text("Answer")
                     } footer: {
-                        Text("AI classifies lean + profanity. Discover will alternate sides before replaying a side.")
+                        Text("Dictate with on-device speech recognition (same approach as ATG). AI classifies lean + profanity. Discover alternates sides before replaying a side; text answers play via TTS.")
                     }
 
-                    Section("Audio answer (optional)") {
-                        if recorder.isRecording {
+                    Section("Dictate (on-device STT)") {
+                        if dictation.isListening {
                             Button(role: .destructive) {
-                                recorder.stop()
+                                stopDictation()
                             } label: {
-                                Label("Stop recording", systemImage: "stop.circle.fill")
+                                Label("Stop dictation", systemImage: "stop.circle.fill")
                             }
-                            Text("Recording… \(Int(recorder.seconds))s")
+                            Text("Listening… \(Int(dictation.seconds))s · on-device")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            if !dictation.partialTranscript.isEmpty {
+                                Text(dictation.partialTranscript)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         } else {
                             Button {
-                                Task { await recorder.start() }
+                                Task { await startDictation() }
                             } label: {
                                 Label(
-                                    recorder.fileURL == nil ? "Record audio" : "Re-record",
-                                    systemImage: "mic.circle.fill"
+                                    text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                        ? "Dictate answer"
+                                        : "Dictate more",
+                                    systemImage: "waveform.badge.mic"
                                 )
                             }
-                            if recorder.fileURL != nil {
-                                Label("Audio attached", systemImage: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .font(.subheadline)
-                            }
                         }
-                        if let err = recorder.errorMessage {
+                        if let err = dictation.errorMessage {
                             Text(err).font(.caption).foregroundStyle(.red)
                         }
                     }
@@ -107,8 +110,8 @@ struct SubmitAnswerView: View {
                         }
                         .disabled(
                             isSubmitting
-                                || (text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                    && recorder.fileURL == nil)
+                                || dictation.isListening
+                                || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         )
                     }
 
@@ -166,6 +169,30 @@ struct SubmitAnswerView: View {
                     selectedQuestionId = questions.questions.first?.id
                 }
             }
+            .onChange(of: dictation.partialTranscript) { _, _ in
+                guard dictation.isListening else { return }
+                text = dictation.liveText
+            }
+            .onChange(of: dictation.finalTranscript) { _, _ in
+                guard !dictation.isListening else { return }
+                let live = dictation.liveText
+                if !live.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    text = live
+                }
+            }
+        }
+    }
+
+    private func startDictation() async {
+        statusMessage = nil
+        await dictation.start(prefixExistingText: text)
+    }
+
+    private func stopDictation() {
+        dictation.stop()
+        let live = dictation.liveText
+        if !live.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            text = live
         }
     }
 
@@ -174,25 +201,21 @@ struct SubmitAnswerView: View {
         statusMessage = nil
         defer { isSubmitting = false }
 
-        let answerId = UUID()
-        var audioName: String?
-        if let recorded = recorder.fileURL {
-            let dest = answers.makeAudioFileURL(for: answerId)
-            try? FileManager.default.removeItem(at: dest)
-            do {
-                try FileManager.default.copyItem(at: recorded, to: dest)
-                audioName = dest.lastPathComponent
-            } catch {
-                statusIsError = true
-                statusMessage = "Couldn't save audio: \(error.localizedDescription)"
-                return
-            }
+        if dictation.isListening {
+            stopDictation()
         }
 
+        let answerId = UUID()
         let body = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else {
+            statusIsError = true
+            statusMessage = "Add text or dictate an answer first."
+            return
+        }
+
         let analysis = await analysisService.analyze(
             question: question,
-            text: body.isEmpty ? "(audio-only submission)" : body,
+            text: body,
             claimedSide: claimedSide
         )
 
@@ -200,98 +223,15 @@ struct SubmitAnswerView: View {
             id: answerId,
             questionId: question.id,
             claimedSide: claimedSide,
-            text: body.isEmpty ? analysis.summary : body,
-            audioFileName: audioName,
+            text: body,
+            audioFileName: nil,
             analysis: analysis
         )
         answers.save(answer)
-        recorder.clear()
+        dictation.reset()
         text = ""
         statusIsError = false
         statusMessage = "Saved · lean \(question.label(for: analysis.leanSide)) (\(Int(analysis.leanConfidence * 100))%)"
             + (analysis.containsProfanity ? " · profanity flagged" : "")
-    }
-}
-
-// MARK: - Recorder
-
-@MainActor
-final class AnswerAudioRecorder: NSObject, ObservableObject {
-    @Published var isRecording = false
-    @Published var seconds: TimeInterval = 0
-    @Published var fileURL: URL?
-    @Published var errorMessage: String?
-
-    private var recorder: AVAudioRecorder?
-    private var timer: Timer?
-    private var tempURL: URL?
-
-    func start() async {
-        errorMessage = nil
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
-            try session.setActive(true)
-        } catch {
-            errorMessage = "Mic session failed: \(error.localizedDescription)"
-            return
-        }
-
-        let granted: Bool
-        if #available(iOS 17.0, *) {
-            granted = await AVAudioApplication.requestRecordPermission()
-        } else {
-            granted = await withCheckedContinuation { cont in
-                session.requestRecordPermission { cont.resume(returning: $0) }
-            }
-        }
-        guard granted else {
-            errorMessage = "Microphone permission denied."
-            return
-        }
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("steelman-\(UUID().uuidString).m4a")
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
-        ]
-        do {
-            let r = try AVAudioRecorder(url: url, settings: settings)
-            r.record()
-            recorder = r
-            tempURL = url
-            fileURL = nil
-            isRecording = true
-            seconds = 0
-            timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    self?.seconds = self?.recorder?.currentTime ?? 0
-                }
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func stop() {
-        recorder?.stop()
-        timer?.invalidate()
-        timer = nil
-        isRecording = false
-        fileURL = tempURL
-        recorder = nil
-    }
-
-    func clear() {
-        stop()
-        if let tempURL {
-            try? FileManager.default.removeItem(at: tempURL)
-        }
-        fileURL = nil
-        tempURL = nil
-        seconds = 0
     }
 }

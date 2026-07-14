@@ -32,6 +32,7 @@
 		EA32918CC0ADA3A87A810798 /* TestablesKit in Frameworks */ = {isa = PBXBuildFile; productRef = 44C9842A20D48DCEA4D93B58 /* TestablesKit */; };
 		F2887B0D2B72C339F80BF254 /* SteelmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4D42590E202973E1CF89DD /* SteelmanApp.swift */; };
 		F459068212A6D0083670D0B8 /* QuestionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1DA8B1F9E0FE4D6F25ED958 /* QuestionsView.swift */; };
+		FFE3BC082A1B479EE95803DE /* OnDeviceSpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8071CE70DED6B4D363A2A5 /* OnDeviceSpeechTranscriber.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 		CA21E02BCA37A3C09F9E045D /* SteelmanTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanTheme.swift; sourceTree = "<group>"; };
 		DB7701DA11DB7DABF730BCDA /* Question.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Question.swift; sourceTree = "<group>"; };
 		E1DA8B1F9E0FE4D6F25ED958 /* QuestionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionsView.swift; sourceTree = "<group>"; };
+		EC8071CE70DED6B4D363A2A5 /* OnDeviceSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSpeechTranscriber.swift; sourceTree = "<group>"; };
 		FA93490DFAF8BF8A68889489 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -136,6 +138,7 @@
 				6668170FE4219E745C22CD03 /* AnswerStore.swift */,
 				0AB61D21B2386686E3D60D56 /* ArgumentDeckBuilder.swift */,
 				19C7D088D2DBB3BD2A018C88 /* ArgumentDeckCache.swift */,
+				EC8071CE70DED6B4D363A2A5 /* OnDeviceSpeechTranscriber.swift */,
 				A49976C41E590097C469962B /* QuestionStore.swift */,
 			);
 			path = Services;
@@ -329,6 +332,7 @@
 				6463FD561B510BCBF707F68A /* DiscoverView.swift in Sources */,
 				5BAE9771D8C8A8BEACCEEAC2 /* GitInfo.swift in Sources */,
 				2CACF256EE5A339E74F7F3C2 /* NowPlayingContent.swift in Sources */,
+				FFE3BC082A1B479EE95803DE /* OnDeviceSpeechTranscriber.swift in Sources */,
 				BC6BAA90CD160908D5A80AFA /* Question.swift in Sources */,
 				E3F4C0EBF956F4F4FF3285F6 /* QuestionStore.swift in Sources */,
 				F459068212A6D0083670D0B8 /* QuestionsView.swift in Sources */,

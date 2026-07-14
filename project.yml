@@ -57,6 +57,7 @@ targets:
         CFBundleShortVersionString: "1.0"
         ITSAppUsesNonExemptEncryption: false
         NSMicrophoneUsageDescription: "Steelman records voice answers and test feedback."
+        NSSpeechRecognitionUsageDescription: "Steelman turns your spoken answer into text on-device."
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

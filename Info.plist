@@ -24,6 +24,8 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Steelman records voice answers and test feedback.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Steelman turns your spoken answer into text on-device.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
