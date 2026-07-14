@@ -394,8 +394,9 @@ final class ClipPreviewPlayer: ObservableObject {
         switch item.status {
         case .readyToPlay:
             errorMessage = nil
-            if let d = item.duration.seconds, d.isFinite, d > 0 {
-                duration = d
+            let itemDuration = item.duration.seconds
+            if itemDuration.isFinite, itemDuration > 0 {
+                duration = itemDuration
             }
             syncPlayingFromPlayer()
         case .failed:
