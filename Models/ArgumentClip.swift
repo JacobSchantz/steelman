@@ -54,14 +54,10 @@ struct ArgumentClip: Identifiable, Codable, Equatable {
         self.segmentFileName = segmentFileName
     }
 
-    /// Headline for NowPlayingContent (episode-title slot in keepMovin).
+    /// Headline for NowPlayingContent (episode-title slot in keepMovin). The question
+    /// isn't repeated on the card — Discover scrolls one question at a time, so the
+    /// question card and the toolbar already say what's being argued.
     var title: String { sideLabel }
-
-    /// Subtitle (show-title slot): the debate question, truncated for the card.
-    var subtitle: String {
-        let p = questionPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        return p.count > 90 ? String(p.prefix(87)) + "…" : p
-    }
 
     var description: String {
         if !analysisSummary.isEmpty {

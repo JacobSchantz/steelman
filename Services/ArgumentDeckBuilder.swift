@@ -6,6 +6,9 @@ import Foundation
 /// side before you can hear the original side again. Implemented by tracking the
 /// last heard side per question and only enqueueing answers whose side is allowed
 /// under that gate, while globally preferring A/B/A/B interleaving across the feed.
+///
+/// Discover scrolls one question at a time, so it passes a single question — but the
+/// builder still handles a list, and interleaves across them when given more than one.
 enum ArgumentDeckBuilder {
     /// Construct an ordered deck from questions + answers. Skips answers with no
     /// resolved side. Marks profanity but does not hide them (moderation is visible
@@ -13,8 +16,7 @@ enum ArgumentDeckBuilder {
     static func build(
         questions: [Question],
         answers: [Answer],
-        audioURLProvider: (Answer) -> URL?,
-        lastHeardSide: [UUID: ArgumentSide] = [:]
+        audioURLProvider: (Answer) -> URL?
     ) -> [ArgumentClip] {
         let qById = Dictionary(uniqueKeysWithValues: questions.map { ($0.id, $0) })
 
@@ -35,7 +37,7 @@ enum ArgumentDeckBuilder {
             }
         }
 
-        var lastSide = lastHeardSide
+        var lastSide: [UUID: ArgumentSide] = [:]
         var deck: [ArgumentClip] = []
         var usedAnswerIDs = Set<UUID>()
 
@@ -111,6 +113,10 @@ enum ArgumentDeckBuilder {
         let estimated = max(8, Double(wordCount) / 2.3)
 
         return ArgumentClip(
+            // Identify a clip by the answer it plays. A deck never repeats an answer, so
+            // this is unique — and it stays the same across rebuilds, which is what lets
+            // "already heard" state and downloaded segments survive a deck rebuild.
+            id: answer.id,
             questionId: question.id,
             answerId: answer.id,
             questionPrompt: question.prompt,

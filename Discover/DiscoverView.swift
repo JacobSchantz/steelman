@@ -1,158 +1,210 @@
 import SwiftUI
 
-/// TikTok-style vertical Discover feed — layout and player chrome mirror keepMovin's
-/// `AddWithAIView`, but each page is one side of an argument. The deck is ordered so
-/// you cannot hear the same side of a question twice without hearing the other side first.
+/// Discover — **one question at a time**.
+///
+/// The feed opens on a question card that reads the question out loud, then scrolls
+/// through the alternating viewpoints on that question. Reach the end and it rolls
+/// straight into the next recommended question, starting with *its* question card. The
+/// toolbar names the question you're in and opens a picker to jump to another one.
 ///
 /// Product gates on the feed itself:
 /// - No skip-forward and no scrubbing at all — the bar is a playback indicator.
-/// - The *next* viewpoint can be peeked at by scrolling, but the feed bounces back to the
-///   current one with a lock message until the current clip has been heard to the end.
-/// - Answer body text is hidden for now (title/subtitle remain).
+/// - The next page can be peeked at by scrolling, but the feed bounces back with a lock
+///   message until the current page — question card or clip — has been heard to the end.
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
 
-    @StateObject private var clipPlayer = ClipPreviewPlayer()
+    @StateObject private var player = ClipPreviewPlayer()
 
+    /// The question being scrolled through. Nil until the first recommendation lands.
+    @State private var selectedQuestionID: UUID?
+    /// Clips for the selected question only, in alternating-side order.
     @State private var clips: [ArgumentClip] = []
-    @State private var currentID: UUID?
-    @State private var lastHeardSide: [UUID: ArgumentSide] = [:]
+    @State private var currentPageID: UUID?
+    /// Pages heard end-to-end — question cards included. This is what unlocks scrolling.
+    @State private var heardPageIDs: Set<UUID> = []
+    /// Questions already listened through; the next-question pick prefers fresh ones.
+    @State private var completedQuestionIDs: Set<UUID> = []
     @State private var downloadingClips: Set<UUID> = []
     @State private var didInitialLoad = false
-    /// Clips the user has listened all the way through — unlocks scrolling past them.
-    @State private var fullyHeardIDs: Set<UUID> = []
-    /// Shown after the feed bounces the user back off a locked card.
+    @State private var showingPicker = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
-
-    @AppStorage("discoverTotalSwiped") private var totalSwiped = 0
-    @State private var countedIDs: Set<UUID> = []
 
     private let deckCache = ArgumentDeckCache.shared
     private let clipDownloadCount = 10
     private let playerPreloadCount = 2
 
-    private var currentClip: ArgumentClip? {
-        if let currentID, let c = clips.first(where: { $0.id == currentID }) { return c }
-        return clips.first
+    // MARK: - Pages
+
+    private var currentQuestion: Question? {
+        if let selectedQuestionID, let q = questions.question(id: selectedQuestionID) { return q }
+        return recommendedQuestions.first ?? questions.questions.first
     }
 
-    /// Highest index the user is allowed to land on: everything through the first
-    /// not-yet-finished clip (inclusive). Past that is locked until they finish listening.
-    private var maxAllowedIndex: Int {
-        guard !clips.isEmpty else { return 0 }
-        for (i, clip) in clips.enumerated() {
-            if !fullyHeardIDs.contains(clip.id) {
-                return i
-            }
+    /// The feed for the current question: its question card, its clips, and — as the last
+    /// page — the *next* question's card. Scrolling onto that last page is what hands the
+    /// listener to the next question.
+    private var pages: [DiscoverPage] {
+        guard let currentQuestion else { return [] }
+        var pages: [DiscoverPage] = [.question(currentQuestion)]
+        pages += clips.map { .clip($0) }
+        if let next = nextQuestion {
+            pages.append(.question(next))
         }
-        return clips.count - 1
+        return pages
     }
+
+    private var currentPage: DiscoverPage? {
+        if let currentPageID, let page = pages.first(where: { $0.id == currentPageID }) { return page }
+        return pages.first
+    }
+
+    /// Questions worth sending someone to, best first: ones with both sides represented
+    /// beat one-sided ones, then more answers wins. Questions with nothing to hear are
+    /// never recommended (they're still reachable from the picker).
+    private var recommendedQuestions: [Question] {
+        questions.questions
+            .map { (question: $0, answers: answers.answers(for: $0.id)) }
+            .filter { !$0.answers.isEmpty }
+            .sorted { lhs, rhs in
+                let lhsBothSides = hasBothSides(lhs.answers)
+                let rhsBothSides = hasBothSides(rhs.answers)
+                if lhsBothSides != rhsBothSides { return lhsBothSides }
+                if lhs.answers.count != rhs.answers.count { return lhs.answers.count > rhs.answers.count }
+                return lhs.question.createdAt > rhs.question.createdAt
+            }
+            .map(\.question)
+    }
+
+    private func hasBothSides(_ answers: [Answer]) -> Bool {
+        let sides = Set(answers.compactMap(\.resolvedSide))
+        return sides.count > 1
+    }
+
+    /// Where the listener goes when this question runs out: the best-ranked question they
+    /// haven't finished yet, or — once they've heard everything — back around the loop.
+    private var nextQuestion: Question? {
+        let others = recommendedQuestions.filter { $0.id != currentQuestion?.id }
+        return others.first { !completedQuestionIDs.contains($0.id) } ?? others.first
+    }
+
+    /// Highest index the listener may land on: everything through the first page they
+    /// haven't finished (inclusive). Past that is locked until they listen.
+    private var maxAllowedIndex: Int {
+        guard !pages.isEmpty else { return 0 }
+        for (i, page) in pages.enumerated() where !heardPageIDs.contains(page.id) {
+            return i
+        }
+        return pages.count - 1
+    }
+
+    /// Everything earned, plus **one page beyond** — the peek. The peek exists so the
+    /// listener can see that something is waiting; landing on it bounces them back.
+    private var scrollablePages: [DiscoverPage] {
+        guard !pages.isEmpty else { return [] }
+        return Array(pages.prefix(min(maxAllowedIndex + 2, pages.count)))
+    }
+
+    private func isLocked(_ page: DiscoverPage) -> Bool {
+        guard let idx = pages.firstIndex(where: { $0.id == page.id }) else { return false }
+        return idx > maxAllowedIndex
+    }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
             Group {
-                if clips.isEmpty {
+                if pages.isEmpty {
                     emptyState
                 } else {
                     feed
                 }
             }
-            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Discover")
-                        .font(.headline)
+                    Text(currentQuestion?.prompt ?? "")
+                        .font(.footnote.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingPicker = true } label: {
+                        Image(systemName: "text.bubble.fill")
+                    }
+                    .accessibilityLabel("Choose a question")
                 }
             }
-            .task(id: currentID) { await prepareAndPlayCurrent() }
+            .sheet(isPresented: $showingPicker) {
+                QuestionPickerSheet(
+                    questions: questions,
+                    answers: answers,
+                    currentQuestionID: currentQuestion?.id,
+                    onSelect: { select(questionID: $0, completingCurrent: false) }
+                )
+            }
+            .task(id: currentPageID) { await prepareAndPlayCurrent() }
             .onAppear {
                 if !didInitialLoad {
                     didInitialLoad = true
-                    rebuildDeck(preferCache: true)
+                    restore()
                 }
             }
-            .onChange(of: answers.answers) { _, _ in
-                rebuildDeck(preferCache: false)
-            }
-            .onChange(of: questions.questions) { _, _ in
-                rebuildDeck(preferCache: false)
-            }
-            .onChange(of: clipPlayer.finishedClipID) { _, finished in
-                // The player names the clip that reached its end, so a card change mid-
-                // completion can't credit the wrong one.
+            .onChange(of: answers.answers) { _, _ in rebuildClips() }
+            .onChange(of: questions.questions) { _, _ in rebuildClips() }
+            .onChange(of: player.finishedItemID) { _, finished in
                 guard let finished else { return }
-                fullyHeardIDs.insert(finished)
+                heardPageIDs.insert(finished)
+                persist()
+                advanceIfQuestionFinished(afterHearing: finished)
             }
-            .onChange(of: currentID) { _, newID in
-                guard let newID, let newIndex = clips.firstIndex(where: { $0.id == newID }) else { return }
-                if newIndex > maxAllowedIndex {
-                    bounceBackToCurrent()
-                }
-            }
+            .onChange(of: currentPageID) { _, newID in handleLanding(on: newID) }
             .onDisappear { lockMessageTask?.cancel() }
         }
-    }
-
-    /// The user scrolled onto the locked peek card. Let them see it, then bounce them back
-    /// to the clip they still owe a listen to, and say why.
-    private func bounceBackToCurrent() {
-        guard !clips.isEmpty else { return }
-        let allowedID = clips[maxAllowedIndex].id
-        withAnimation(.snappy) {
-            showLockMessage = true
-            if currentID != allowedID {
-                currentID = allowedID
-            }
-        }
-        lockMessageTask?.cancel()
-        lockMessageTask = Task {
-            try? await Task.sleep(for: .seconds(2.5))
-            guard !Task.isCancelled else { return }
-            withAnimation(.snappy) { showLockMessage = false }
-        }
-    }
-
-    // MARK: - Feed (keepMovin Discover scroll mechanics)
-
-    /// Past clips, the first unfinished one, and **one page beyond it** — the peek. The
-    /// peek page exists so the user can scroll down and see that a next viewpoint is
-    /// waiting; landing on it bounces them straight back (`bounceBackToCurrent`).
-    private var scrollableClips: [ArgumentClip] {
-        guard !clips.isEmpty else { return [] }
-        let end = min(maxAllowedIndex + 2, clips.count)
-        return Array(clips.prefix(end))
-    }
-
-    /// True for the peek page — the one viewpoint rendered beyond what's been earned.
-    private func isLocked(_ clip: ArgumentClip) -> Bool {
-        guard let idx = clips.firstIndex(where: { $0.id == clip.id }) else { return false }
-        return idx > maxAllowedIndex
     }
 
     private var feed: some View {
         ScrollView(.vertical) {
             LazyVStack(spacing: 0) {
-                ForEach(scrollableClips) { clip in
-                    let locked = isLocked(clip)
-                    ArgumentFeedCard(
-                        clip: clip,
-                        isCurrent: !locked && clip.id == currentClip?.id,
-                        isLocked: locked,
-                        clipPlayer: clipPlayer
-                    )
-                    .containerRelativeFrame([.horizontal, .vertical])
-                    .id(clip.id)
+                ForEach(scrollablePages) { page in
+                    pageView(page)
+                        .containerRelativeFrame([.horizontal, .vertical])
+                        .id(page.id)
                 }
             }
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
         .scrollIndicators(.hidden)
-        .scrollPosition(id: $currentID, anchor: .top)
+        .scrollPosition(id: $currentPageID, anchor: .top)
         .overlay(alignment: .top) { lockMessage }
+    }
+
+    @ViewBuilder
+    private func pageView(_ page: DiscoverPage) -> some View {
+        let locked = isLocked(page)
+        let isCurrent = !locked && page.id == currentPage?.id
+
+        switch page {
+        case .question(let question):
+            QuestionIntroCard(
+                question: question,
+                answerCount: answers.answers(for: question.id).count,
+                isCurrent: isCurrent,
+                isLocked: locked,
+                player: player
+            )
+        case .clip(let clip):
+            ArgumentFeedCard(
+                clip: clip,
+                isCurrent: isCurrent,
+                isLocked: locked,
+                player: player
+            )
+        }
     }
 
     @ViewBuilder
@@ -176,86 +228,146 @@ struct DiscoverView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("No alternating clips yet", systemImage: "bubble.left.and.bubble.right")
+            Label("Nothing to argue about yet", systemImage: "bubble.left.and.bubble.right")
         } description: {
-            Text("Add answers on both sides of a question. Discover only advances to the other side after you hear one — then back again.")
+            Text("Add a question, then answers on both sides of it. Discover reads you the question, then alternates the viewpoints.")
         }
     }
 
-    // MARK: - Deck build + play
+    // MARK: - Moving between pages and questions
 
-    private func rebuildDeck(preferCache: Bool) {
-        if preferCache, let snapshot = deckCache.loadSnapshot(), !snapshot.clips.isEmpty {
-            clips = snapshot.clips
-            lastHeardSide = snapshot.lastHeardSide.reduce(into: [:]) { dict, pair in
-                if let qid = UUID(uuidString: pair.key),
-                   let side = ArgumentSide(rawValue: pair.value) {
-                    dict[qid] = side
-                }
-            }
-            if let saved = snapshot.currentID, clips.contains(where: { $0.id == saved }) {
-                currentID = saved
-            } else {
-                currentID = clips.first?.id
-            }
-            // Refresh from live stores if answers grew.
-            let live = buildLiveDeck()
-            if live.count > clips.count {
-                clips = live
-                currentID = clips.first?.id
-            }
+    /// The listener scrolled somewhere. Either they've reached the next question's card
+    /// (hand them over), or they've jumped ahead of what they've earned (bounce them back).
+    private func handleLanding(on pageID: UUID?) {
+        guard let pageID, let idx = pages.firstIndex(where: { $0.id == pageID }) else { return }
+
+        if idx > maxAllowedIndex {
+            bounceBackToCurrent()
             return
         }
+        // The only question card that isn't the one we're on is the trailing one — the
+        // next question. Landing on it is the handoff.
+        if case .question(let question) = pages[idx], question.id != currentQuestion?.id {
+            select(questionID: question.id, completingCurrent: true)
+        }
+    }
 
-        clips = buildLiveDeck()
-        currentID = clips.first?.id
+    /// Last clip of the question just played out — roll into the next question's card so
+    /// the feed keeps going without the listener having to do anything.
+    private func advanceIfQuestionFinished(afterHearing pageID: UUID) {
+        guard currentPageID == pageID,
+              let idx = pages.firstIndex(where: { $0.id == pageID }),
+              case .clip = pages[idx],
+              idx == pages.count - 2,
+              case .question = pages[pages.count - 1] else { return }
+
+        withAnimation(.snappy) {
+            currentPageID = pages[pages.count - 1].id
+        }
+    }
+
+    private func select(questionID: UUID, completingCurrent: Bool) {
+        if completingCurrent, let current = currentQuestion?.id {
+            completedQuestionIDs.insert(current)
+        }
+        selectedQuestionID = questionID
+        rebuildClips()
+        // The question's card is page 0, and it carries the question's id — so when this
+        // came from scrolling onto the trailing card, the listener is already on it.
+        currentPageID = questionID
         persist()
     }
 
-    private func buildLiveDeck() -> [ArgumentClip] {
-        ArgumentDeckBuilder.build(
-            questions: questions.questions,
+    /// The listener scrolled onto the locked peek page. Let them see it, then bounce them
+    /// back to the page they still owe a listen to, and say why.
+    private func bounceBackToCurrent() {
+        guard !pages.isEmpty else { return }
+        let allowedID = pages[maxAllowedIndex].id
+        withAnimation(.snappy) {
+            showLockMessage = true
+            if currentPageID != allowedID {
+                currentPageID = allowedID
+            }
+        }
+        lockMessageTask?.cancel()
+        lockMessageTask = Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { showLockMessage = false }
+        }
+    }
+
+    // MARK: - Deck + playback
+
+    private func restore() {
+        let snapshot = deckCache.loadSnapshot()
+        if let snapshot {
+            heardPageIDs = Set(snapshot.heardPageIDs)
+            completedQuestionIDs = Set(snapshot.completedQuestionIDs)
+            if let saved = snapshot.selectedQuestionID, questions.question(id: saved) != nil {
+                selectedQuestionID = saved
+            }
+        }
+        rebuildClips()
+        if let saved = snapshot?.currentPageID, pages.contains(where: { $0.id == saved }) {
+            currentPageID = saved
+        } else {
+            currentPageID = pages.first?.id
+        }
+    }
+
+    private func rebuildClips() {
+        guard let question = currentQuestion else {
+            clips = []
+            return
+        }
+        clips = ArgumentDeckBuilder.build(
+            questions: [question],
             answers: answers.answers,
-            audioURLProvider: { answers.audioURL(for: $0) },
-            lastHeardSide: [:] // full rebuild; alternating enforced by builder order
+            audioURLProvider: { answers.audioURL(for: $0) }
         )
+        .map { clip in
+            // A clip's downloaded segment is named after the clip, so a rebuilt deck picks
+            // up what's already on disk.
+            var hydrated = clip
+            hydrated.segmentFileName = deckCache.cachedSegmentName(for: clip.id)
+            return hydrated
+        }
+
+        if let currentPageID, !pages.contains(where: { $0.id == currentPageID }) {
+            self.currentPageID = pages.first?.id
+        }
     }
 
     private func persist() {
-        let map = lastHeardSide.reduce(into: [String: String]()) { $0[$1.key.uuidString] = $1.value.rawValue }
         deckCache.save(ArgumentDeckCache.Snapshot(
-            clips: clips,
-            currentID: currentID,
-            lastHeardSide: map
+            selectedQuestionID: currentQuestion?.id,
+            currentPageID: currentPageID,
+            heardPageIDs: Array(heardPageIDs),
+            completedQuestionIDs: Array(completedQuestionIDs)
         ))
     }
 
     private func prepareAndPlayCurrent() async {
-        guard let clip = currentClip else {
-            clipPlayer.stop()
+        guard let page = currentPage else {
+            player.stop()
+            return
+        }
+        // Landed on the locked peek page. Don't play it — the page change already kicked
+        // off the bounce back to the page they still owe a listen.
+        guard let idx = pages.firstIndex(where: { $0.id == page.id }), idx <= maxAllowedIndex else {
             return
         }
 
-        // Landed on the locked peek page. Don't play it, don't count it — the currentID
-        // change already kicked off the bounce back to the clip they still owe a listen.
-        if let idx = clips.firstIndex(where: { $0.id == clip.id }), idx > maxAllowedIndex {
-            return
+        switch page {
+        case .question(let question):
+            player.play(.question(question))
+        case .clip(let clip):
+            prefetchUpcoming(clip)
+            player.play(.clip(clip, url: deckCache.localSegmentURL(for: clip)))
+            downloadSegment(for: clip)
         }
-
-        if countedIDs.insert(clip.id).inserted {
-            totalSwiped += 1
-        }
-
-        // Alternating bookkeeping: once you land on a side, that becomes last-heard for the question.
-        lastHeardSide[clip.questionId] = clip.side
         persist()
-
-        // Warm upcoming audio segments + players (keepMovin pattern).
-        prefetchUpcoming(clip)
-
-        let segment = deckCache.localSegmentURL(for: clip)
-        clipPlayer.play(clip: clip, url: segment)
-        downloadSegment(for: clip)
     }
 
     private func prefetchUpcoming(_ current: ArgumentClip) {
@@ -265,7 +377,7 @@ struct DiscoverView: View {
             downloadSegment(for: clip)
         }
         for clip in upcoming.prefix(playerPreloadCount) {
-            clipPlayer.preload(clip: clip)
+            player.preload(clip: clip)
         }
     }
 
@@ -279,67 +391,65 @@ struct DiscoverView: View {
             guard let fileName,
                   let idx = clips.firstIndex(where: { $0.id == clip.id }) else { return }
             clips[idx].segmentFileName = fileName
-            persist()
+        }
+    }
+}
+
+// MARK: - Pages
+
+/// A page of the feed: the card that reads a question, or one viewpoint on it.
+enum DiscoverPage: Identifiable, Equatable {
+    case question(Question)
+    case clip(ArgumentClip)
+
+    /// A question card is identified by its question, a clip by its answer — both stable
+    /// across deck rebuilds, so "already heard" survives one.
+    var id: UUID {
+        switch self {
+        case .question(let question): return question.id
+        case .clip(let clip): return clip.id
         }
     }
 }
 
 // MARK: - Feed card
 
-/// Full-bleed page: artwork + title/subtitle + transport (play/pause + skip back only).
-/// The bar is a read-only indicator — there is no scrubbing and no skip-forward.
-/// Side rail and answer body text are intentionally omitted for the current product pass.
+/// Full-bleed page: artwork + side label + transport (play/pause + skip back only).
+/// The bar is a read-only indicator — there is no scrubbing and no skip-forward. The
+/// question isn't repeated here: it's in the toolbar, and it opened the question.
 private struct ArgumentFeedCard: View {
     let clip: ArgumentClip
     let isCurrent: Bool
     /// The peek page: visible so the user knows more is coming, but not yet earned.
     let isLocked: Bool
-    @ObservedObject var clipPlayer: ClipPreviewPlayer
+    @ObservedObject var player: ClipPreviewPlayer
 
     var body: some View {
         NowPlayingContent(
             artworkURL: nil,
             localArtworkURL: nil,
             title: clip.title,
-            subtitle: clip.subtitle,
-            currentTime: isCurrent ? clipPlayer.progress : 0,
-            duration: isCurrent ? clipPlayer.duration : max(clip.duration, 1),
-            bufferedTime: isCurrent ? clipPlayer.bufferedProgress : 0,
+            subtitle: nil,
+            currentTime: isCurrent ? player.progress : 0,
+            duration: isCurrent ? player.duration : max(clip.duration, 1),
+            bufferedTime: isCurrent ? player.bufferedProgress : 0,
             // Only the active card mirrors real engine state — other pages stay on "play".
-            isPlaying: isCurrent && clipPlayer.isPlaying,
+            isPlaying: isCurrent && player.isPlaying,
             description: "",
             sliderInteractive: false,
             showSkipBackward: true,
             showDescription: false,
             scrollable: false,
             onSeek: { _ in },
-            onSkipBackward: { guard isCurrent else { return }; clipPlayer.skipBackward() },
-            onTogglePlayPause: { guard isCurrent else { return }; clipPlayer.togglePlayPause() },
-            errorMessage: isCurrent ? clipPlayer.errorMessage : nil,
+            onSkipBackward: { guard isCurrent else { return }; player.skipBackward() },
+            onTogglePlayPause: { guard isCurrent else { return }; player.togglePlayPause() },
+            errorMessage: isCurrent ? player.errorMessage : nil,
             accent: SteelmanTheme.color(for: clip.side),
             badge: clip.containsProfanity ? "Profanity" : nil,
             badgeColor: SteelmanTheme.danger
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
-        .overlay { if isLocked { lockedOverlay } }
-    }
-
-    /// Frosts the peek page and swallows taps, so its transport can't be driven.
-    private var lockedOverlay: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-            VStack(spacing: 14) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 44))
-                Text("Finish listening to this one first")
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-            }
-            .foregroundStyle(.secondary)
-            .padding()
-        }
-        .contentShape(Rectangle())
+        .overlay { if isLocked { LockedPeekOverlay() } }
     }
 }

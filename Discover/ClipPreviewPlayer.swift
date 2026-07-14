@@ -2,8 +2,49 @@ import Foundation
 import AVFoundation
 import Combine
 
-/// Audition player for Discover cards — ported from keepMovin's ClipPreviewPlayer.
-/// Plays file/remote audio, or speaks text answers via AVSpeechSynthesizer when no audio URL.
+/// One thing the player can play: a page of the Discover feed. That's either a clip
+/// (recorded audio, or the answer text spoken aloud) or the question card that opens a
+/// question (the prompt spoken aloud). Both go down the same path — audio when there's
+/// a URL, speech when there isn't.
+struct PlayerItem: Equatable {
+    /// The page this item belongs to — what `finishedItemID` reports back to the feed.
+    let id: UUID
+    /// Identifies the *sound*, so re-entering the same page doesn't restart it.
+    let dedupeKey: String
+    /// Spoken via TTS when `audioURL` is nil.
+    let text: String
+    let audioURL: URL?
+    let duration: TimeInterval
+    let startTime: TimeInterval
+
+    static func clip(_ clip: ArgumentClip, url: URL? = nil) -> PlayerItem {
+        let audioURL = url ?? clip.audioURL
+        return PlayerItem(
+            id: clip.id,
+            dedupeKey: audioURL?.absoluteString ?? "tts:answer:\(clip.answerId)",
+            text: clip.answerText,
+            audioURL: audioURL,
+            duration: max(clip.duration, 1),
+            startTime: clip.startTime
+        )
+    }
+
+    /// The question read out loud — every question opens with this before any argument.
+    static func question(_ question: Question) -> PlayerItem {
+        let words = question.prompt.split { $0.isWhitespace || $0.isNewline }.count
+        return PlayerItem(
+            id: question.id,
+            dedupeKey: "tts:question:\(question.id)",
+            text: question.prompt,
+            audioURL: nil,
+            duration: max(4, Double(words) / 2.3),
+            startTime: 0
+        )
+    }
+}
+
+/// Audition player for Discover pages — ported from keepMovin's ClipPreviewPlayer.
+/// Plays file/remote audio, or speaks text via AVSpeechSynthesizer when there's no audio URL.
 ///
 /// Two product rules are enforced here rather than in the UI, so they can't be bypassed:
 /// - **No forward seeking.** `seek(to:)` clamps to the current position, so the only way
@@ -19,19 +60,19 @@ final class ClipPreviewPlayer: ObservableObject {
     @Published private(set) var duration: TimeInterval = 0
     @Published private(set) var bufferedProgress: TimeInterval = 0
     @Published private(set) var errorMessage: String?
-    /// True once the active clip has been heard all the way through at least once.
+    /// True once the active item has been heard all the way through at least once.
     @Published private(set) var hasFullyHeardCurrent = false
-    /// Id of the clip that most recently played to its natural end. The feed keys its
+    /// Id of the page that most recently played to its natural end. The feed keys its
     /// unlock off this rather than off `hasFullyHeardCurrent` + "whatever is on screen",
-    /// so a clip change mid-completion can't credit the wrong card.
-    @Published private(set) var finishedClipID: UUID?
+    /// so a page change mid-completion can't credit the wrong card.
+    @Published private(set) var finishedItemID: UUID?
 
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var itemStatusObserver: NSKeyValueObservation?
     private var timeControlObserver: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
-    private var clip: ArgumentClip?
+    private var current: PlayerItem?
     private var sessionConfigured = false
     private var didAttemptRecovery = false
     /// Intent, not display state: the user pressed pause, so re-entering the same card
@@ -42,34 +83,23 @@ final class ClipPreviewPlayer: ObservableObject {
     private let synthesizer = AVSpeechSynthesizer()
     private var ttsDelegate: TTSDelegate?
     private var isTTS = false
-    /// The full answer text. Progress is (characters spoken / characters total).
+    /// The full text being spoken. Progress is (characters spoken / characters total).
     private var ttsFullText = ""
     /// Where in `ttsFullText` the live utterance starts (non-zero after a backward seek).
     private var ttsUtteranceOffset = 0
 
-    private struct ClipKey: Hashable {
-        let answerId: UUID
-        let url: String
-    }
-
-    private var activeKey: ClipKey?
-    private var preloaded: [ClipKey: AVPlayer] = [:]
-    private var preloadOrder: [ClipKey] = []
+    private var activeKey: String?
+    private var preloaded: [String: AVPlayer] = [:]
+    private var preloadOrder: [String] = []
     private let maxPreloaded = 3
     private let fullEpisodeForwardBuffer: TimeInterval = 60
     /// Treat within this many seconds of duration as "fully heard".
     private let completionSlop: TimeInterval = 0.6
 
-    private func key(for clip: ArgumentClip) -> ClipKey {
-        ClipKey(answerId: clip.answerId, url: clip.audioURL?.absoluteString ?? "tts:\(clip.answerId)")
-    }
-
-    func play(clip: ArgumentClip, url: URL? = nil) {
-        let k = key(for: clip)
-
-        if k == activeKey, (player != nil || isTTS), errorMessage == nil {
-            // Same card re-entered. Don't fight an explicit pause, and don't restart a
-            // clip that already ran to the end — the user has to press play for that.
+    func play(_ item: PlayerItem) {
+        if item.dedupeKey == activeKey, (player != nil || isTTS), errorMessage == nil {
+            // Same card re-entered. Don't fight an explicit pause, and don't restart
+            // something that already ran to the end — the user has to press play for that.
             guard !pausedByUser, !hasFullyHeardCurrent else { return }
             resumeCurrent()
             return
@@ -78,39 +108,39 @@ final class ClipPreviewPlayer: ObservableObject {
         configureSession()
         stopPlayersOnly()
 
-        self.clip = clip
-        self.activeKey = k
+        self.current = item
+        self.activeKey = item.dedupeKey
         self.errorMessage = nil
         self.didAttemptRecovery = false
         self.pausedByUser = false
-        self.progress = clip.startTime
-        self.bufferedProgress = clip.startTime
+        self.progress = item.startTime
+        self.bufferedProgress = item.startTime
         self.hasFullyHeardCurrent = false
-        self.finishedClipID = nil
+        self.finishedItemID = nil
 
         // Prefer real audio (segment file or original URL).
-        let playURL = url ?? clip.audioURL
-        if let playURL {
+        if let audioURL = item.audioURL {
             isTTS = false
             ttsFullText = ""
-            duration = max(clip.duration, 1)
-            startAudio(url: playURL, start: clip.startTime, key: k)
+            duration = item.duration
+            startAudio(url: audioURL, start: item.startTime, key: item.dedupeKey)
             return
         }
 
-        // Text-only answer → speak it.
+        // Nothing recorded → speak the text.
         isTTS = true
-        startTTS(fullText: clip.answerText, from: 0, estimatedTotal: max(clip.duration, 8))
+        startTTS(fullText: item.text, from: 0, estimatedTotal: max(item.duration, 8))
     }
 
     func preload(clip: ArgumentClip) {
-        guard let audioURL = clip.audioURL else { return }
-        let k = key(for: clip)
+        let item = PlayerItem.clip(clip)
+        guard let audioURL = item.audioURL else { return }
+        let k = item.dedupeKey
         guard k != activeKey, preloaded[k] == nil else { return }
         configureSession()
         let warm = AVPlayer(url: audioURL)
         warm.currentItem?.preferredForwardBufferDuration = fullEpisodeForwardBuffer
-        warm.seek(to: CMTime(seconds: clip.startTime, preferredTimescale: 600))
+        warm.seek(to: CMTime(seconds: item.startTime, preferredTimescale: 600))
         preloaded[k] = warm
         preloadOrder.append(k)
         while preloadOrder.count > maxPreloaded {
@@ -121,10 +151,12 @@ final class ClipPreviewPlayer: ObservableObject {
     }
 
     func togglePlayPause() {
-        if errorMessage != nil, let clip {
+        if errorMessage != nil, let current {
             errorMessage = nil
             didAttemptRecovery = false
-            play(clip: clip, url: clip.audioURL)
+            // Start over rather than resume: a player that failed has nothing to resume.
+            activeKey = nil
+            play(current)
             return
         }
 
@@ -167,11 +199,11 @@ final class ClipPreviewPlayer: ObservableObject {
             return
         }
         // Not speaking: either finished or never started.
-        guard let clip else { return }
+        guard let current else { return }
         pausedByUser = false
         let restart = hasFullyHeardCurrent || progress >= duration - completionSlop
         let offset = restart ? 0 : ttsOffset(forSeconds: progress)
-        startTTS(fullText: clip.answerText, from: offset, estimatedTotal: max(duration, 8))
+        startTTS(fullText: current.text, from: offset, estimatedTotal: max(duration, 8))
     }
 
     /// Seek — **backward only**. The clamp to `progress` is what makes forward skipping
@@ -196,7 +228,7 @@ final class ClipPreviewPlayer: ObservableObject {
 
     func stop() {
         stopPlayersOnly()
-        clip = nil
+        current = nil
         activeKey = nil
         progress = 0
         bufferedProgress = 0
@@ -208,7 +240,7 @@ final class ClipPreviewPlayer: ObservableObject {
         ttsFullText = ""
         ttsUtteranceOffset = 0
         hasFullyHeardCurrent = false
-        finishedClipID = nil
+        finishedItemID = nil
     }
 
     func teardownAll() {
@@ -220,7 +252,7 @@ final class ClipPreviewPlayer: ObservableObject {
 
     // MARK: - Audio
 
-    private func startAudio(url: URL, start: TimeInterval, key k: ClipKey) {
+    private func startAudio(url: URL, start: TimeInterval, key k: String) {
         if let warm = preloaded.removeValue(forKey: k) {
             preloadOrder.removeAll { $0 == k }
             if warm.currentItem?.status != .failed {
@@ -257,8 +289,8 @@ final class ClipPreviewPlayer: ObservableObject {
         if isTTS {
             if synthesizer.isPaused {
                 synthesizer.continueSpeaking()
-            } else if !synthesizer.isSpeaking, let clip {
-                startTTS(fullText: clip.answerText, from: ttsUtteranceOffset, estimatedTotal: max(duration, 8))
+            } else if !synthesizer.isSpeaking, let current {
+                startTTS(fullText: current.text, from: ttsUtteranceOffset, estimatedTotal: max(duration, 8))
             }
             return
         }
@@ -322,7 +354,7 @@ final class ClipPreviewPlayer: ObservableObject {
 
     private func markFullyHeard() {
         hasFullyHeardCurrent = true
-        finishedClipID = clip?.id
+        finishedItemID = current?.id
     }
 
     private func loadedSeconds() -> TimeInterval {
@@ -415,11 +447,11 @@ final class ClipPreviewPlayer: ObservableObject {
             }
             syncPlaybackStateFromEngine()
         case .failed:
-            if !didAttemptRecovery, let clip, let url = clip.audioURL {
+            if !didAttemptRecovery, let current, let url = current.audioURL {
                 didAttemptRecovery = true
                 teardownObserver()
                 teardownEndObserver()
-                startAudio(url: url, start: max(progress, clip.startTime), key: key(for: clip))
+                startAudio(url: url, start: max(progress, current.startTime), key: current.dedupeKey)
             } else {
                 errorMessage = "Couldn't play this clip. Tap play to retry."
                 syncPlaybackStateFromEngine()

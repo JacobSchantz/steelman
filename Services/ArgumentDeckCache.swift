@@ -1,14 +1,24 @@
 import Foundation
 import AVFoundation
 
-/// Persists Discover deck + pre-downloads short audio segments (keepMovin DiscoverDeckCache).
+/// Persists where the listener is + pre-downloads short audio segments
+/// (keepMovin DiscoverDeckCache).
+///
+/// The deck itself is **not** stored: clips are rebuilt from `QuestionStore` /
+/// `AnswerStore`, which are the source of truth, and a clip's id is its answer's id.
+/// All that has to survive a launch is the listener's place in the feed.
 final class ArgumentDeckCache {
     static let shared = ArgumentDeckCache()
 
     struct Snapshot: Codable {
-        var clips: [ArgumentClip]
-        var currentID: UUID?
-        var lastHeardSide: [String: String] // questionId.uuidString → side.rawValue
+        /// The question currently being scrolled through.
+        var selectedQuestionID: UUID?
+        /// The page (question card or clip) the feed is parked on.
+        var currentPageID: UUID?
+        /// Pages heard end-to-end — what unlocks scrolling past them.
+        var heardPageIDs: [UUID]
+        /// Questions whose clips have all been heard; the next-question pick skips these.
+        var completedQuestionIDs: [UUID]
     }
 
     static let segmentSeconds: TimeInterval = 30
@@ -27,8 +37,7 @@ final class ArgumentDeckCache {
 
     func loadSnapshot() -> Snapshot? {
         guard let data = try? Data(contentsOf: snapshotURL),
-              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
-              !snapshot.clips.isEmpty else {
+              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) else {
             return nil
         }
         return snapshot
@@ -44,9 +53,21 @@ final class ArgumentDeckCache {
     }
 
     func localSegmentURL(for clip: ArgumentClip) -> URL? {
-        guard let name = clip.segmentFileName else { return nil }
+        let name = clip.segmentFileName ?? segmentFileName(for: clip.id)
         let url = cacheRoot.appendingPathComponent(name)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// A clip's segment is named after the clip, so a rebuilt deck finds an already
+    /// downloaded segment without having to persist the deck to remember it.
+    func cachedSegmentName(for clipID: UUID) -> String? {
+        let name = segmentFileName(for: clipID)
+        let url = cacheRoot.appendingPathComponent(name)
+        return FileManager.default.fileExists(atPath: url.path) ? name : nil
+    }
+
+    private func segmentFileName(for clipID: UUID) -> String {
+        "\(clipID.uuidString).\(audioExtension)"
     }
 
     /// Pre-download a short segment for instant start when the clip has remote/local file audio.
@@ -60,7 +81,7 @@ final class ArgumentDeckCache {
 
         // Local file shorter than segment: just copy (or point by name).
         if audioURL.isFileURL {
-            let fileName = "\(id.uuidString).\(audioExtension)"
+            let fileName = segmentFileName(for: id)
             let destination = cacheRoot.appendingPathComponent(fileName)
             if FileManager.default.fileExists(atPath: destination.path) { return fileName }
             do {
@@ -77,7 +98,7 @@ final class ArgumentDeckCache {
             return nil
         }
 
-        let fileName = "\(id.uuidString).\(audioExtension)"
+        let fileName = segmentFileName(for: id)
         let destination = cacheRoot.appendingPathComponent(fileName)
         try? FileManager.default.removeItem(at: destination)
 
