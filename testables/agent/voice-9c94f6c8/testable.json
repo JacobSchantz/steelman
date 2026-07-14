@@ -1,1 +1,11 @@
-{"platform":"ios","image_urls":[],"id":"voice-9c94f6c8","results":[],"description":"Voice note","updated_at":"2026-07-14T20:20:43.938Z","test_instructions":[],"created_at":"2026-07-14T20:20:43.938Z"}
+{
+  "platform": "ios",
+  "image_urls": [],
+  "id": "voice-9c94f6c8",
+  "results": [],
+  "description": "When a bit of audio finishes playing, we should then go to the next argument.",
+  "updated_at": "2026-07-14T20:24:09.000Z",
+  "test_instructions": [],
+  "created_at": "2026-07-14T20:20:43.938Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
