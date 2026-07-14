@@ -64,7 +64,14 @@ struct QuestionIntroCard: View {
 
     @ViewBuilder
     private var footer: some View {
-        if isReading {
+        if isCurrent, player.isPreparing {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Warming up the voice")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+        } else if isReading {
             HStack(spacing: 8) {
                 Image(systemName: "speaker.wave.3.fill")
                     .symbolEffect(.variableColor.iterative, isActive: true)

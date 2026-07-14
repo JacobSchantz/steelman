@@ -7,29 +7,37 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0CCD9917D8E1B9522161061A /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 344186B2428D0B8D89D76FD6 /* sherpa-onnx.xcframework */; };
 		2CACF256EE5A339E74F7F3C2 /* NowPlayingContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A5B427E9C0EFBF311E332AD /* NowPlayingContent.swift */; };
 		3E3278C204F4B131C847062D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2BAB92DAE6ABCA50B771F689 /* Assets.xcassets */; };
+		486AE258EF4AF88249A53F31 /* QuestionIntroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DF8A2E56D0FF6470FBE708 /* QuestionIntroCard.swift */; };
 		597A4A1F7B44ED9A755C1367 /* ClipPreviewPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B4FC5B1847AAB072BCCBCC3 /* ClipPreviewPlayer.swift */; };
 		5BAA244ABC6084EF39A18016 /* TestablesKit in Frameworks */ = {isa = PBXBuildFile; productRef = 7D4297E67B264661BD81DDB3 /* TestablesKit */; };
 		5BAE9771D8C8A8BEACCEEAC2 /* GitInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0003255FA7958FCD40964A /* GitInfo.swift */; };
+		5EBBCD9CC3C11C088CB249FF /* SpeechRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76402513CBF54BEAFFD1BA2 /* SpeechRenderer.swift */; };
 		6463FD561B510BCBF707F68A /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D30212B1C2BCB9F81E95FFE /* DiscoverView.swift */; };
 		68CA64163B823AE6A1D3EB8D /* TestingViewModel+Shared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C672E8E6CB101AF5A2784B7 /* TestingViewModel+Shared.swift */; };
 		6C6A2F23983F70BD6CB7EE2E /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA93490DFAF8BF8A68889489 /* CachedAsyncImage.swift */; };
+		71A56F73384BAC8C0436CA2A /* QuestionBrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7BFB49CD1657BDB40A09C0 /* QuestionBrowseView.swift */; };
 		743CD9779B19AE472DA9169E /* TokenKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 852A9D274D36FE370AF9D99E /* TokenKeychain.swift */; };
 		74FCFB2847E1926AAD27E31F /* AnswerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6668170FE4219E745C22CD03 /* AnswerStore.swift */; };
 		76F380D46E91E84DB36F01EC /* Answer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EDA50AB6B9FE6615DD8D95 /* Answer.swift */; };
 		88BAFA0EB4B6D1A3572A062F /* ArgumentDeckBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AB61D21B2386686E3D60D56 /* ArgumentDeckBuilder.swift */; };
 		8FFAE2EF55F0EB00960144D4 /* testables in Resources */ = {isa = PBXBuildFile; fileRef = 311DF26788DECB2F51A77502 /* testables */; };
 		9065FBE6FE3F1536F71702B2 /* ArgumentClip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F408948D893D78C33B509C4 /* ArgumentClip.swift */; };
+		975A5157D9EA25B8DC4055F4 /* KokoroModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 766A766667960219A2F99B3D /* KokoroModelStore.swift */; };
 		A65A733E11DB2AFADDA41F4F /* TestablesWiringCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222D94FC46AAFAF9058DE074 /* TestablesWiringCheck.swift */; };
 		BC6BAA90CD160908D5A80AFA /* Question.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB7701DA11DB7DABF730BCDA /* Question.swift */; };
 		C0503EAF195BA4B653CE403E /* SteelmanConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93AF9CB9BA376C9417F53D1 /* SteelmanConfig.swift */; };
 		CC5636EDEBFE08472A5A1165 /* AnswerAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36D5B8EAD3F46C87EB6B552E /* AnswerAnalysisService.swift */; };
+		D5534063BD0DE0FC9EA290FC /* KokoroTTS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 34012EA2417BA4AA5E2C59F9 /* KokoroTTS.mm */; };
 		D9A043E87B09DD6F71D2E087 /* SteelmanTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA21E02BCA37A3C09F9E045D /* SteelmanTheme.swift */; };
 		DF5840DDC49252B39250709D /* ArgumentDeckCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C7D088D2DBB3BD2A018C88 /* ArgumentDeckCache.swift */; };
 		DF5FBF748589ED228E05485F /* SubmitAnswerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C298ADCAA024A9700D63DE26 /* SubmitAnswerView.swift */; };
+		DF62FA7E8E5971755F4A1A7C /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DC5AE8218A34D8796EA563E /* onnxruntime.xcframework */; };
 		E3F4C0EBF956F4F4FF3285F6 /* QuestionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49976C41E590097C469962B /* QuestionStore.swift */; };
 		EA32918CC0ADA3A87A810798 /* TestablesKit in Frameworks */ = {isa = PBXBuildFile; productRef = 44C9842A20D48DCEA4D93B58 /* TestablesKit */; };
+		EC524885C177BC7434729196 /* KokoroAssets in Resources */ = {isa = PBXBuildFile; fileRef = B8A45DBFAB492C46F0FB452B /* KokoroAssets */; };
 		F2887B0D2B72C339F80BF254 /* SteelmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4D42590E202973E1CF89DD /* SteelmanApp.swift */; };
 		F459068212A6D0083670D0B8 /* QuestionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1DA8B1F9E0FE4D6F25ED958 /* QuestionsView.swift */; };
 		FFE3BC082A1B479EE95803DE /* OnDeviceSpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8071CE70DED6B4D363A2A5 /* OnDeviceSpeechTranscriber.swift */; };
@@ -42,12 +50,17 @@
 		222D94FC46AAFAF9058DE074 /* TestablesWiringCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestablesWiringCheck.swift; sourceTree = "<group>"; };
 		2BAB92DAE6ABCA50B771F689 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		311DF26788DECB2F51A77502 /* testables */ = {isa = PBXFileReference; lastKnownFileType = folder; path = testables; sourceTree = SOURCE_ROOT; };
+		31DF8A2E56D0FF6470FBE708 /* QuestionIntroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionIntroCard.swift; sourceTree = "<group>"; };
+		34012EA2417BA4AA5E2C59F9 /* KokoroTTS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = KokoroTTS.mm; sourceTree = "<group>"; };
+		344186B2428D0B8D89D76FD6 /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = "sherpa-onnx.xcframework"; path = "Vendor/sherpa-onnx.xcframework"; sourceTree = "<group>"; };
 		36D5B8EAD3F46C87EB6B552E /* AnswerAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerAnalysisService.swift; sourceTree = "<group>"; };
 		3D30212B1C2BCB9F81E95FFE /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
 		5A5B427E9C0EFBF311E332AD /* NowPlayingContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingContent.swift; sourceTree = "<group>"; };
 		5B4FC5B1847AAB072BCCBCC3 /* ClipPreviewPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPreviewPlayer.swift; sourceTree = "<group>"; };
 		5C672E8E6CB101AF5A2784B7 /* TestingViewModel+Shared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TestingViewModel+Shared.swift"; sourceTree = "<group>"; };
+		5DC5AE8218A34D8796EA563E /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = onnxruntime.xcframework; path = Vendor/onnxruntime.xcframework; sourceTree = "<group>"; };
 		6668170FE4219E745C22CD03 /* AnswerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerStore.swift; sourceTree = "<group>"; };
+		766A766667960219A2F99B3D /* KokoroModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KokoroModelStore.swift; sourceTree = "<group>"; };
 		7B4D42590E202973E1CF89DD /* SteelmanApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanApp.swift; sourceTree = "<group>"; };
 		852A9D274D36FE370AF9D99E /* TokenKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenKeychain.swift; sourceTree = "<group>"; };
 		8B66172A95BB7D87AC344750 /* Steelman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Steelman.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -57,10 +70,14 @@
 		A93AF9CB9BA376C9417F53D1 /* SteelmanConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanConfig.swift; sourceTree = "<group>"; };
 		AE0003255FA7958FCD40964A /* GitInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitInfo.swift; sourceTree = "<group>"; };
 		B3EDA50AB6B9FE6615DD8D95 /* Answer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Answer.swift; sourceTree = "<group>"; };
+		B8A45DBFAB492C46F0FB452B /* KokoroAssets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = KokoroAssets; sourceTree = SOURCE_ROOT; };
+		BA0D0ECD6ABDC7034B3B05B1 /* KokoroTTS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KokoroTTS.h; sourceTree = "<group>"; };
 		C298ADCAA024A9700D63DE26 /* SubmitAnswerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmitAnswerView.swift; sourceTree = "<group>"; };
+		C76402513CBF54BEAFFD1BA2 /* SpeechRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRenderer.swift; sourceTree = "<group>"; };
 		CA21E02BCA37A3C09F9E045D /* SteelmanTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelmanTheme.swift; sourceTree = "<group>"; };
 		DB7701DA11DB7DABF730BCDA /* Question.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Question.swift; sourceTree = "<group>"; };
 		E1DA8B1F9E0FE4D6F25ED958 /* QuestionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionsView.swift; sourceTree = "<group>"; };
+		EB7BFB49CD1657BDB40A09C0 /* QuestionBrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionBrowseView.swift; sourceTree = "<group>"; };
 		EC8071CE70DED6B4D363A2A5 /* OnDeviceSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSpeechTranscriber.swift; sourceTree = "<group>"; };
 		FA93490DFAF8BF8A68889489 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -79,6 +96,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				5BAA244ABC6084EF39A18016 /* TestablesKit in Frameworks */,
+				0CCD9917D8E1B9522161061A /* sherpa-onnx.xcframework in Frameworks */,
+				DF62FA7E8E5971755F4A1A7C /* onnxruntime.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +121,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		197E087A8D52191AA93FB01B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5DC5AE8218A34D8796EA563E /* onnxruntime.xcframework */,
+				344186B2428D0B8D89D76FD6 /* sherpa-onnx.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		2ACABF7003DE811450E4C080 /* Submit */ = {
 			isa = PBXGroup;
 			children = (
@@ -115,6 +143,7 @@
 			children = (
 				2BAB92DAE6ABCA50B771F689 /* Assets.xcassets */,
 				0EA82709B0983CAE4E65DF8F /* Info.plist */,
+				B8A45DBFAB492C46F0FB452B /* KokoroAssets */,
 				7B4D42590E202973E1CF89DD /* SteelmanApp.swift */,
 				A93AF9CB9BA376C9417F53D1 /* SteelmanConfig.swift */,
 				311DF26788DECB2F51A77502 /* testables */,
@@ -124,9 +153,11 @@
 				E97A492A33226C9816F3287B /* Questions */,
 				612E3BFE779BA1C5758EF766 /* Services */,
 				86808EE25EC5BFB62213ADA7 /* Shared */,
+				B4EB71E9A2FA244EC20C1638 /* Speech */,
 				2ACABF7003DE811450E4C080 /* Submit */,
 				063A17C154D315B4783B1F0A /* testables */,
 				ADFCB36855C43D8DC77C54CE /* Testing */,
+				197E087A8D52191AA93FB01B /* Frameworks */,
 				0DCCFC538FDB1CFDA23AD15C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -138,8 +169,10 @@
 				6668170FE4219E745C22CD03 /* AnswerStore.swift */,
 				0AB61D21B2386686E3D60D56 /* ArgumentDeckBuilder.swift */,
 				19C7D088D2DBB3BD2A018C88 /* ArgumentDeckCache.swift */,
+				766A766667960219A2F99B3D /* KokoroModelStore.swift */,
 				EC8071CE70DED6B4D363A2A5 /* OnDeviceSpeechTranscriber.swift */,
 				A49976C41E590097C469962B /* QuestionStore.swift */,
+				C76402513CBF54BEAFFD1BA2 /* SpeechRenderer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -176,8 +209,19 @@
 				5B4FC5B1847AAB072BCCBCC3 /* ClipPreviewPlayer.swift */,
 				3D30212B1C2BCB9F81E95FFE /* DiscoverView.swift */,
 				5A5B427E9C0EFBF311E332AD /* NowPlayingContent.swift */,
+				EB7BFB49CD1657BDB40A09C0 /* QuestionBrowseView.swift */,
+				31DF8A2E56D0FF6470FBE708 /* QuestionIntroCard.swift */,
 			);
 			path = Discover;
+			sourceTree = "<group>";
+		};
+		B4EB71E9A2FA244EC20C1638 /* Speech */ = {
+			isa = PBXGroup;
+			children = (
+				BA0D0ECD6ABDC7034B3B05B1 /* KokoroTTS.h */,
+				34012EA2417BA4AA5E2C59F9 /* KokoroTTS.mm */,
+			);
+			path = Speech;
 			sourceTree = "<group>";
 		};
 		E47E375A0F3E8063EB982CCC /* Models */ = {
@@ -289,6 +333,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3E3278C204F4B131C847062D /* Assets.xcassets in Resources */,
+				EC524885C177BC7434729196 /* KokoroAssets in Resources */,
 				8FFAE2EF55F0EB00960144D4 /* testables in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -331,11 +376,16 @@
 				597A4A1F7B44ED9A755C1367 /* ClipPreviewPlayer.swift in Sources */,
 				6463FD561B510BCBF707F68A /* DiscoverView.swift in Sources */,
 				5BAE9771D8C8A8BEACCEEAC2 /* GitInfo.swift in Sources */,
+				975A5157D9EA25B8DC4055F4 /* KokoroModelStore.swift in Sources */,
+				D5534063BD0DE0FC9EA290FC /* KokoroTTS.mm in Sources */,
 				2CACF256EE5A339E74F7F3C2 /* NowPlayingContent.swift in Sources */,
 				FFE3BC082A1B479EE95803DE /* OnDeviceSpeechTranscriber.swift in Sources */,
 				BC6BAA90CD160908D5A80AFA /* Question.swift in Sources */,
+				71A56F73384BAC8C0436CA2A /* QuestionBrowseView.swift in Sources */,
+				486AE258EF4AF88249A53F31 /* QuestionIntroCard.swift in Sources */,
 				E3F4C0EBF956F4F4FF3285F6 /* QuestionStore.swift in Sources */,
 				F459068212A6D0083670D0B8 /* QuestionsView.swift in Sources */,
+				5EBBCD9CC3C11C088CB249FF /* SpeechRenderer.swift in Sources */,
 				F2887B0D2B72C339F80BF254 /* SteelmanApp.swift in Sources */,
 				C0503EAF195BA4B653CE403E /* SteelmanConfig.swift in Sources */,
 				D9A043E87B09DD6F71D2E087 /* SteelmanTheme.swift in Sources */,
@@ -383,6 +433,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Vendor\"",
+				);
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -391,6 +445,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.steelman.app;
 				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "Steelman-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -434,6 +489,7 @@
 				DEVELOPMENT_TEAM = 563V2QK49N;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -494,6 +550,7 @@
 				DEVELOPMENT_TEAM = 563V2QK49N;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -549,6 +606,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Vendor\"",
+				);
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -557,6 +618,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.steelman.app;
 				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "Steelman-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

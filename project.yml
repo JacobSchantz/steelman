@@ -10,6 +10,11 @@ packages:
     url: https://github.com/JacobSchantz/testables
     branch: main
 
+# The vendored sherpa-onnx + onnxruntime xcframeworks (Kokoro TTS) ship an arm64-only
+# simulator slice: onnxruntime's fat (arm64 + x86_64) simulator static lib is 126 MB, over
+# GitHub's 100 MB per-file limit, so the x86_64 slice can't be committed. Excluding x86_64
+# for the simulator SDK builds arm64-only there (fine on Apple Silicon). Device builds,
+# which is what vigil ships, are unaffected. Intel Macs cannot run this in the simulator.
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -17,6 +22,7 @@ settings:
     INFOPLIST_FILE: Info.plist
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: "563V2QK49N"
+    EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
 
 targets:
   Steelman:
@@ -32,9 +38,17 @@ targets:
       - path: Questions
       - path: Submit
       - path: Shared
+      # Obj-C++ bridge to sherpa-onnx (Kokoro TTS). Reaches Swift via the bridging header.
+      - path: Speech
       - path: Assets.xcassets
       - path: Info.plist
       - path: testables
+        type: folder
+        buildPhase: resources
+      # Kokoro G2P data (tokens.txt + espeak-ng-data). A *folder reference*, not a source
+      # glob: sherpa-onnx opens espeak-ng-data/ as a real directory at runtime, and globbing
+      # would flatten the tree and break it. The big weights download separately.
+      - path: KokoroAssets
         type: folder
         buildPhase: resources
       - path: Generated
@@ -43,6 +57,12 @@ targets:
         script: "bash ${SRCROOT}/Scripts/write_git_info.sh"
     dependencies:
       - package: TestablesKit
+      # Kokoro-82M runtime. STATIC xcframeworks, so they're linked into the binary rather
+      # than embedded — embedding them would fail to sign/load as dynamic frameworks.
+      - framework: Vendor/sherpa-onnx.xcframework
+        embed: false
+      - framework: Vendor/onnxruntime.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.steelman.app
@@ -50,6 +70,7 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         INFOPLIST_FILE: Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_OBJC_BRIDGING_HEADER: Steelman-Bridging-Header.h
     info:
       path: Info.plist
       properties:

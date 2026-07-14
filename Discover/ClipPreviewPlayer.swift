@@ -44,7 +44,14 @@ struct PlayerItem: Equatable {
 }
 
 /// Audition player for Discover pages — ported from keepMovin's ClipPreviewPlayer.
-/// Plays file/remote audio, or speaks text via AVSpeechSynthesizer when there's no audio URL.
+///
+/// Text answers are spoken by **Kokoro-82M on-device** (`SpeechRenderer`), which renders
+/// them to a WAV first. That's why there's no separate "TTS transport" here anymore:
+/// synthesized speech is just an audio file, so it flows through the same `AVPlayer` path
+/// as a recorded answer and gets a real duration, a real scrubber, and a real
+/// end-of-playback signal. AVSpeechSynthesizer survives only as the fallback for when
+/// Kokoro can't speak — the weights are still downloading, or the native backend isn't
+/// linked. In that mode progress is the character-count estimate it always was.
 ///
 /// Two product rules are enforced here rather than in the UI, so they can't be bypassed:
 /// - **No forward seeking.** `seek(to:)` clamps to the current position, so the only way
@@ -60,6 +67,9 @@ final class ClipPreviewPlayer: ObservableObject {
     @Published private(set) var duration: TimeInterval = 0
     @Published private(set) var bufferedProgress: TimeInterval = 0
     @Published private(set) var errorMessage: String?
+    /// Kokoro is synthesizing this card and nothing is audible yet. The only state in which
+    /// the transport is neither playing nor pausable — the UI shows a spinner.
+    @Published private(set) var isPreparing = false
     /// True once the active item has been heard all the way through at least once.
     @Published private(set) var hasFullyHeardCurrent = false
     /// Id of the page that most recently played to its natural end. The feed keys its
@@ -79,10 +89,12 @@ final class ClipPreviewPlayer: ObservableObject {
     /// must not silently resume. Never used to decide what the controls show.
     private var pausedByUser = false
 
-    // TTS path
+    // Fallback speech path (AVSpeechSynthesizer), used only when Kokoro can't speak.
     private let synthesizer = AVSpeechSynthesizer()
     private var ttsDelegate: TTSDelegate?
     private var isTTS = false
+    /// The in-flight Kokoro render for the active card, cancelled when we move off it.
+    private var renderTask: Task<Void, Never>?
     /// The full text being spoken. Progress is (characters spoken / characters total).
     private var ttsFullText = ""
     /// Where in `ttsFullText` the live utterance starts (non-zero after a backward seek).
@@ -97,7 +109,7 @@ final class ClipPreviewPlayer: ObservableObject {
     private let completionSlop: TimeInterval = 0.6
 
     func play(_ item: PlayerItem) {
-        if item.dedupeKey == activeKey, (player != nil || isTTS), errorMessage == nil {
+        if item.dedupeKey == activeKey, (player != nil || isTTS || isPreparing), errorMessage == nil {
             // Same card re-entered. Don't fight an explicit pause, and don't restart
             // something that already ran to the end — the user has to press play for that.
             guard !pausedByUser, !hasFullyHeardCurrent else { return }
@@ -127,9 +139,56 @@ final class ClipPreviewPlayer: ObservableObject {
             return
         }
 
-        // Nothing recorded → speak the text.
-        isTTS = true
-        startTTS(fullText: item.text, from: 0, estimatedTotal: max(item.duration, 8))
+        // Nothing recorded → speak the text. If Kokoro already rendered this answer, it's an
+        // ordinary audio file and takes the path above, scrubber and all.
+        if let spoken = SpeechRenderer.cachedURL(for: item.text) {
+            startRenderedSpeech(at: spoken, key: item.dedupeKey, estimated: item.duration)
+            return
+        }
+
+        // Kokoro can't speak yet (weights still downloading, or the backend isn't linked):
+        // fall back rather than leave the feed silent.
+        guard SpeechRenderer.isAvailable else {
+            isTTS = true
+            startTTS(fullText: item.text, from: 0, estimatedTotal: max(item.duration, 8))
+            return
+        }
+
+        // Synthesize it, then play it as audio. `DiscoverView` renders the next few cards
+        // ahead of time, so in a moving feed this branch is mostly the very first card.
+        isTTS = false
+        ttsFullText = ""
+        duration = max(item.duration, 1)
+        isPreparing = true
+        syncPlaybackStateFromEngine()
+
+        let key = item.dedupeKey
+        let text = item.text
+        let estimated = item.duration
+        renderTask = Task { [weak self] in
+            let rendered = await SpeechRenderer.shared.render(text)
+            guard let self, !Task.isCancelled, self.activeKey == key else { return }
+            self.isPreparing = false
+            if let rendered {
+                self.startRenderedSpeech(at: rendered, key: key, estimated: estimated)
+            } else {
+                // Synthesis failed — speak it rather than drop the card.
+                self.isTTS = true
+                self.startTTS(fullText: text, from: 0, estimatedTotal: max(estimated, 8))
+            }
+        }
+    }
+
+    /// Play a Kokoro-rendered WAV. `startTime` is deliberately 0: the render is the whole
+    /// answer read from the top, not a segment of a longer recording.
+    private func startRenderedSpeech(at url: URL, key: String, estimated: TimeInterval) {
+        isTTS = false
+        ttsFullText = ""
+        isPreparing = false
+        // A placeholder until AVPlayer reports the real length, which it does almost
+        // immediately for a local file — after which the scrubber spans actual audio.
+        duration = max(estimated, 1)
+        startAudio(url: url, start: 0, key: key)
     }
 
     func preload(clip: ArgumentClip) {
@@ -237,6 +296,7 @@ final class ClipPreviewPlayer: ObservableObject {
         isPlaying = false
         pausedByUser = false
         isTTS = false
+        isPreparing = false
         ttsFullText = ""
         ttsUtteranceOffset = 0
         hasFullyHeardCurrent = false
@@ -286,6 +346,8 @@ final class ClipPreviewPlayer: ObservableObject {
     }
 
     private func resumeCurrent() {
+        // Synthesis is still running for this card; it will start playback when it lands.
+        if isPreparing { return }
         if isTTS {
             if synthesizer.isPaused {
                 synthesizer.continueSpeaking()
@@ -299,6 +361,13 @@ final class ClipPreviewPlayer: ObservableObject {
     }
 
     private func stopPlayersOnly() {
+        // Abandon any synthesis for the outgoing card. The render itself is cached by
+        // SpeechRenderer if it completes anyway, so nothing is wasted — this just stops it
+        // from calling back and playing over whatever is now on screen.
+        renderTask?.cancel()
+        renderTask = nil
+        isPreparing = false
+
         player?.pause()
         teardownObserver()
         teardownItemObserver()
@@ -452,6 +521,16 @@ final class ClipPreviewPlayer: ObservableObject {
                 teardownObserver()
                 teardownEndObserver()
                 startAudio(url: url, start: max(progress, current.startTime), key: current.dedupeKey)
+            } else if !didAttemptRecovery, let current, current.audioURL == nil {
+                // A rendered WAV that won't open — bin it so it gets synthesized again, and
+                // speak the answer rather than dead-ending the card on an error.
+                didAttemptRecovery = true
+                teardownObserver()
+                teardownEndObserver()
+                player = nil
+                SpeechRenderer.discardRender(for: current.text)
+                isTTS = true
+                startTTS(fullText: current.text, from: 0, estimatedTotal: max(current.duration, 8))
             } else {
                 errorMessage = "Couldn't play this clip. Tap play to retry."
                 syncPlaybackStateFromEngine()

@@ -19,6 +19,7 @@ struct DiscoverView: View {
     @ObservedObject var answers: AnswerStore
 
     @StateObject private var player = ClipPreviewPlayer()
+    @StateObject private var speech = KokoroModelStore.shared
 
     /// The question being scrolled through. Nil until the first recommendation lands.
     @State private var selectedQuestionID: UUID?
@@ -46,6 +47,9 @@ struct DiscoverView: View {
     private let deckCache = ArgumentDeckCache.shared
     private let clipDownloadCount = 10
     private let playerPreloadCount = 2
+    /// How far ahead to synthesize speech. Lower than `clipDownloadCount` because a render
+    /// costs CPU, not just bandwidth, and three cards is more than a listener can outrun.
+    private let speechRenderAheadCount = 3
 
     // MARK: - Pages
 
@@ -129,6 +133,7 @@ struct DiscoverView: View {
                 } else {
                     VStack(spacing: 0) {
                         questionHeader
+                        voiceDownloadNote
                         feed
                     }
                 }
@@ -158,6 +163,10 @@ struct DiscoverView: View {
                 if !didInitialLoad {
                     didInitialLoad = true
                     restore()
+                    // Pull the Kokoro weights in the background. Until they land, answers are
+                    // read by AVSpeechSynthesizer, so the feed works from the first launch —
+                    // it just gets a better voice partway through.
+                    speech.ensureDownloaded()
                 }
             }
             .onChange(of: answers.answers) { _, _ in rebuildClips() }
@@ -184,6 +193,23 @@ struct DiscoverView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 18)
+    }
+
+    /// While the Kokoro weights come down, answers are read by the old system voice. Say so,
+    /// otherwise the first launch just sounds like the robotic voice we set out to replace.
+    @ViewBuilder
+    private var voiceDownloadNote: some View {
+        if let progress = speech.progress {
+            HStack(spacing: 8) {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .frame(width: 90)
+                Text("Downloading the better voice — \(Int(progress * 100))%")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.bottom, 12)
+        }
     }
 
     private var feed: some View {
@@ -422,6 +448,27 @@ struct DiscoverView: View {
         for clip in upcoming.prefix(playerPreloadCount) {
             player.preload(clip: clip)
         }
+        renderSpeechAhead(upcoming)
+    }
+
+    /// Synthesize the next few text answers while the current card is playing.
+    ///
+    /// Kokoro takes seconds on a long argument, so this is what keeps the good voice from
+    /// costing a stall: by the time you swipe, the WAV is already on disk and the card
+    /// starts instantly. Only the very first card of a session can outrun it. Renders are
+    /// cached and de-duplicated inside `SpeechRenderer`, so re-issuing these is cheap.
+    private func renderSpeechAhead(_ upcoming: [ArgumentClip]) {
+        guard SpeechRenderer.isAvailable else { return }
+        let pending = upcoming
+            .filter { $0.audioURL == nil }
+            .prefix(speechRenderAheadCount)
+            .map(\.answerText)
+        guard !pending.isEmpty else { return }
+        Task.detached(priority: .utility) {
+            for text in pending {
+                _ = await SpeechRenderer.shared.render(text)
+            }
+        }
     }
 
     private func downloadSegment(for clip: ArgumentClip) {
@@ -476,6 +523,9 @@ private struct ArgumentFeedCard: View {
             bufferedTime: isCurrent ? player.bufferedProgress : 0,
             // Only the active card mirrors real engine state — other pages stay on "play".
             isPlaying: isCurrent && player.isPlaying,
+            // Kokoro is still synthesizing this answer — spin rather than show a play button
+            // that would do nothing.
+            isLoading: isCurrent && player.isPreparing,
             showSkipBackward: true,
             onSkipBackward: { guard isCurrent else { return }; player.skipBackward() },
             onTogglePlayPause: { guard isCurrent else { return }; player.togglePlayPause() },
