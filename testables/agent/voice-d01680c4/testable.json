@@ -1,11 +1,12 @@
 {
   "description": "Okay, I've got an important problem for you to work on. We need to have really good on-device text-to-speech. So set that up. I think we did it before in the ATG monorepo, and I think also potentially somewhere else. But yeah, basically use an open-source text-to-speech model. This one's way better than the built-in iOS text-to-speech. So use a much better one of that. We may in the future end up pushing that off device, but for now, I think just on here is okay.",
   "image_urls": [],
-  "updated_at": "2026-07-14T20:23:04.000Z",
+  "updated_at": "2026-07-14T20:44:35Z",
   "test_instructions": [],
   "id": "voice-d01680c4",
   "platform": "ios",
   "results": [],
   "created_at": "2026-07-14T20:19:14.209Z",
-  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+  "transcription_model": "mlx-community/whisper-large-v3-mlx",
+  "working_on": "workspace:191"
 }
