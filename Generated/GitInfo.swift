@@ -1,8 +1,8 @@
 // Auto-generated — do not edit
 enum GitInfo {
-    static let shortHash = "090cd33"
-    static let fullHash = "090cd33246ebf3fa081a4893a790c2dd7c403c2c"
+    static let shortHash = "0e5acb8"
+    static let fullHash = "0e5acb813dde8cfd3a7dd83c5a9ac0daf822b2c4"
     static let branch = "main"
-    static let lastCommitMessage = "Add rules 7-8: earn your opinion, meet the strongest rebuttal"
-    static let commitCount = "2"
+    static let lastCommitMessage = "Add Steelman iOS app with TestablesKit integration"
+    static let commitCount = "3"
 }

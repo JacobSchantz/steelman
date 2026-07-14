@@ -12,9 +12,10 @@ extension TestingViewModel {
         currentCommitMessage: GitInfo.lastCommitMessage,
         commitCount: GitInfo.commitCount,
         iconMapping: [
+            "discover": "sparkles",
+            "question": "text.bubble.fill",
+            "answer": "mic.badge.plus",
             "rules": "book.closed.fill",
-            "session": "bubble.left.and.bubble.right.fill",
-            "rebuttal": "arrow.triangle.branch",
         ],
         defaultIcon: "shield.lefthalf.filled"
     ))

@@ -42,18 +42,43 @@ These aren't about *when* to steelman—they're the discipline that separates th
 
 ## iOS app
 
-Native SwiftUI app that walks you through the discipline: claim → steelman → strongest rebuttal → earned opinion.
+Native SwiftUI app whose core loop is **Discover** — the same full-screen vertical feed + now-playing chrome as keepMovin's Discover tab, but every card is one viewpoint on a question.
+
+### Product
+
+| Surface | Role |
+|---|---|
+| **Discover** | Vertical feed of argument clips. Hear side A → must hear side B (for that question) before A again. Text answers play via TTS; audio answers play as files. |
+| **Questions** | Browse / add debate prompts with two side labels. |
+| **Answer** | Submit text and/or mic audio; OpenRouter AI scores **lean side** + **profanity**. |
+| **Rules** | The eight steelmanning rules. |
+
+### Alternating-side rule
+
+`ArgumentDeckBuilder` only enqueues an answer for a question when its side is allowed under the last-heard side for that question. The feed is ordered so you never get the same side twice in a row for the same prompt without the opposite in between.
+
+### AI analysis
+
+`AnswerAnalysisService` calls OpenRouter (`openai/gpt-4o-mini`) when a token is saved in Keychain (Answer tab → OpenRouter token). Without a token, a local heuristic still classifies lean + basic profanity so the app works offline.
+
+### KeepMovin ports
+
+- Full-screen `scrollTargetBehavior(.viewAligned)` feed
+- `NowPlayingContent` + `BufferedScrubber` player chrome
+- `ClipPreviewPlayer` (segment cache / preload / transport)
+- `ArgumentDeckCache` (snapshot + segment pre-download)
+
+### Build
 
 ```bash
-# Generate Xcode project (requires xcodegen)
 xcodegen generate
 open Steelman.xcodeproj
 
-# Or build + install on a connected iPhone via testables
+# Device (testables)
 testables build ios
 # or: ./build_local.sh
 ```
 
 - **Bundle ID:** `com.steelman.app`
-- **Testables:** `TestablesKit` banner + `testables/{queue,agent,human,done}/`
-- **PAT key (in-app):** `github_pat_for_steelman_testables`
+- **Testables path:** `testables/`
+- **PAT key:** `github_pat_for_steelman_testables`

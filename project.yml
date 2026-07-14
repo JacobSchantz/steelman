@@ -27,8 +27,11 @@ targets:
       - path: SteelmanConfig.swift
       - path: Testing
       - path: Models
-      - path: Views
       - path: Services
+      - path: Discover
+      - path: Questions
+      - path: Submit
+      - path: Shared
       - path: Assets.xcassets
       - path: Info.plist
       - path: testables
@@ -53,7 +56,7 @@ targets:
         CFBundleDisplayName: Steelman
         CFBundleShortVersionString: "1.0"
         ITSAppUsesNonExemptEncryption: false
-        NSMicrophoneUsageDescription: "Steelman records voice notes for test feedback."
+        NSMicrophoneUsageDescription: "Steelman records voice answers and test feedback."
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
