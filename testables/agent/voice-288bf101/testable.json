@@ -1,1 +1,13 @@
-{"description":"Voice note","platform":"ios","results":[],"test_instructions":[],"updated_at":"2026-07-14T04:59:28.732Z","image_urls":["screenshot-1B4C1DD7-28A2-4696-9DB4-D04F86C79041.jpg"],"created_at":"2026-07-14T04:59:28.732Z","id":"voice-288bf101"}
+{
+  "description": "On this screen we can also get rid of the three bars in the top left to get rid of that whole screen and everything related to it. We don't need that.",
+  "platform": "ios",
+  "results": [],
+  "test_instructions": [],
+  "updated_at": "2026-07-14T05:03:35.000Z",
+  "image_urls": [
+    "screenshot-1B4C1DD7-28A2-4696-9DB4-D04F86C79041.jpg"
+  ],
+  "created_at": "2026-07-14T04:59:28.732Z",
+  "id": "voice-288bf101",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
