@@ -10,16 +10,21 @@ struct NowPlayingContent: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     var bufferedTime: TimeInterval? = nil
+    /// Furthest position the user has already heard — scrubbing cannot exceed this.
+    var maxScrubTime: TimeInterval? = nil
     let isPlaying: Bool
     var isLoading: Bool = false
     let description: String
     var sliderInteractive: Bool = true
+    var showSkipForward: Bool = false
+    var showSkipBackward: Bool = true
+    var showDescription: Bool = false
     var onScrubbingChanged: ((Bool) -> Void)? = nil
     var scrollable: Bool = true
     let onSeek: (TimeInterval) -> Void
     let onSkipBackward: () -> Void
     let onTogglePlayPause: () -> Void
-    let onSkipForward: () -> Void
+    var onSkipForward: (() -> Void)? = nil
     var errorMessage: String? = nil
     /// Optional tint for the large artwork placeholder (side color).
     var accent: Color = SteelmanTheme.accent
@@ -90,9 +95,14 @@ struct NowPlayingContent: View {
             }
 
             HStack(spacing: 60) {
-                Button(action: onSkipBackward) {
-                    Image(systemName: "gobackward.15")
-                        .font(.system(size: 32))
+                if showSkipBackward {
+                    Button(action: onSkipBackward) {
+                        Image(systemName: "gobackward.15")
+                            .font(.system(size: 32))
+                    }
+                    .accessibilityLabel("Skip back 15 seconds")
+                } else {
+                    Color.clear.frame(width: 32, height: 32)
                 }
 
                 Button(action: onTogglePlayPause) {
@@ -104,10 +114,17 @@ struct NowPlayingContent: View {
                             .font(.system(size: 70))
                     }
                 }
+                .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-                Button(action: onSkipForward) {
-                    Image(systemName: "goforward.15")
-                        .font(.system(size: 32))
+                if showSkipForward, let onSkipForward {
+                    Button(action: onSkipForward) {
+                        Image(systemName: "goforward.15")
+                            .font(.system(size: 32))
+                    }
+                    .accessibilityLabel("Skip forward 15 seconds")
+                } else {
+                    // Keep play centered when forward is hidden (pair with skip-back or empty).
+                    Color.clear.frame(width: 32, height: 32)
                 }
             }
             .foregroundStyle(accent)
@@ -118,6 +135,7 @@ struct NowPlayingContent: View {
                         currentTime: currentTime,
                         duration: duration,
                         bufferedTime: bufferedTime,
+                        maxScrubTime: maxScrubTime ?? currentTime,
                         interactive: sliderInteractive,
                         accent: accent,
                         onSeek: onSeek,
@@ -125,10 +143,16 @@ struct NowPlayingContent: View {
                     )
                     .padding(.horizontal)
                 } else {
-                    Slider(value: Binding(
-                        get: { currentTime },
-                        set: { onSeek($0) }
-                    ), in: 0...max(duration, 1))
+                    Slider(
+                        value: Binding(
+                            get: { currentTime },
+                            set: { proposed in
+                                let cap = maxScrubTime ?? currentTime
+                                onSeek(min(proposed, cap))
+                            }
+                        ),
+                        in: 0...max(duration, 1)
+                    )
                     .tint(accent)
                     .padding(.horizontal)
                     .allowsHitTesting(sliderInteractive)
@@ -157,7 +181,7 @@ struct NowPlayingContent: View {
                 .padding(.horizontal)
             }
 
-            if scrollable, !description.isEmpty {
+            if scrollable, showDescription, !description.isEmpty {
                 Text(description)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -184,10 +208,12 @@ struct NowPlayingContent: View {
 }
 
 /// Scrubber with buffered track — from keepMovin Discover.
+/// Drag is clamped to `maxScrubTime` so users cannot scrub into unheard audio.
 struct BufferedScrubber: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     let bufferedTime: TimeInterval
+    var maxScrubTime: TimeInterval = .infinity
     let interactive: Bool
     var accent: Color = SteelmanTheme.accent
     let onSeek: (TimeInterval) -> Void
@@ -203,6 +229,7 @@ struct BufferedScrubber: View {
             let width = geo.size.width
             let usable = max(width - thumbSize, 1)
             let total = max(duration, 1)
+            let maxFraction = min(max(maxScrubTime / total, 0), 1)
             let playedFraction = dragFraction ?? min(max(currentTime / total, 0), 1)
             let bufferedFraction = min(max(max(bufferedTime / total, currentTime / total), 0), 1)
             let playedX = thumbSize / 2 + usable * playedFraction
@@ -230,10 +257,12 @@ struct BufferedScrubber: View {
                 ? DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         onScrubbingChanged?(true)
-                        dragFraction = min(max((value.location.x - thumbSize / 2) / usable, 0), 1)
+                        let raw = min(max((value.location.x - thumbSize / 2) / usable, 0), 1)
+                        dragFraction = min(raw, maxFraction)
                     }
                     .onEnded { value in
-                        let f = min(max((value.location.x - thumbSize / 2) / usable, 0), 1)
+                        let raw = min(max((value.location.x - thumbSize / 2) / usable, 0), 1)
+                        let f = min(raw, maxFraction)
                         dragFraction = nil
                         onSeek(f * total)
                         onScrubbingChanged?(false)

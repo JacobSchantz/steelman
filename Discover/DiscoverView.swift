@@ -3,6 +3,11 @@ import SwiftUI
 /// TikTok-style vertical Discover feed — layout and player chrome mirror keepMovin's
 /// `AddWithAIView`, but each page is one side of an argument. The deck is ordered so
 /// you cannot hear the same side of a question twice without hearing the other side first.
+///
+/// Product gates on the feed itself:
+/// - No skip-forward / no scrubbing into unheard audio.
+/// - Cannot scroll to the *next* viewpoint until the current clip has been fully heard.
+/// - Answer body text is hidden for now (title/subtitle remain).
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
@@ -15,6 +20,8 @@ struct DiscoverView: View {
     @State private var lastHeardSide: [UUID: ArgumentSide] = [:]
     @State private var downloadingClips: Set<UUID> = []
     @State private var didInitialLoad = false
+    /// Clips the user has listened all the way through — unlocks scrolling past them.
+    @State private var fullyHeardIDs: Set<UUID> = []
 
     @AppStorage("discoverTotalSwiped") private var totalSwiped = 0
     @State private var countedIDs: Set<UUID> = []
@@ -31,6 +38,18 @@ struct DiscoverView: View {
     private var currentIndex: Int? {
         guard let id = currentClip?.id else { return nil }
         return clips.firstIndex { $0.id == id }
+    }
+
+    /// Highest index the user is allowed to land on: everything through the first
+    /// not-yet-finished clip (inclusive). Past that is locked until they finish listening.
+    private var maxAllowedIndex: Int {
+        guard !clips.isEmpty else { return 0 }
+        for (i, clip) in clips.enumerated() {
+            if !fullyHeardIDs.contains(clip.id) {
+                return i
+            }
+        }
+        return clips.count - 1
     }
 
     var body: some View {
@@ -74,15 +93,37 @@ struct DiscoverView: View {
             .onChange(of: questions.questions) { _, _ in
                 rebuildDeck(preferCache: false)
             }
+            .onChange(of: clipPlayer.hasFullyHeardCurrent) { _, heard in
+                guard heard, let id = currentClip?.id else { return }
+                fullyHeardIDs.insert(id)
+            }
+            .onChange(of: currentID) { _, newID in
+                guard let newID, let newIndex = clips.firstIndex(where: { $0.id == newID }) else { return }
+                if newIndex > maxAllowedIndex {
+                    // Snap back — user tried to advance past an unfinished viewpoint.
+                    let allowedID = clips[maxAllowedIndex].id
+                    if currentID != allowedID {
+                        currentID = allowedID
+                    }
+                }
+            }
         }
     }
 
     // MARK: - Feed (keepMovin Discover scroll mechanics)
 
+    /// Only past + the first unfinished clip are in the scroll stack. Finishing the
+    /// current viewpoint appends the next page so scroll-down becomes available.
+    private var scrollableClips: [ArgumentClip] {
+        guard !clips.isEmpty else { return [] }
+        let end = min(maxAllowedIndex + 1, clips.count)
+        return Array(clips.prefix(end))
+    }
+
     private var feed: some View {
         ScrollView(.vertical) {
             LazyVStack(spacing: 0) {
-                ForEach(clips) { clip in
+                ForEach(scrollableClips) { clip in
                     ArgumentFeedCard(
                         clip: clip,
                         isCurrent: clip.id == currentClip?.id,
@@ -116,17 +157,20 @@ struct DiscoverView: View {
             List {
                 if !pastClips.isEmpty {
                     Section("Already played · \(pastClips.count)") {
-                        ForEach(pastClips) { listRow($0) }
+                        ForEach(pastClips) { listRow($0, locked: false) }
                     }
                 }
                 if let clip = currentClip {
                     Section("Now playing") {
-                        listRow(clip)
+                        listRow(clip, locked: false)
                     }
                 }
                 if !upcomingClips.isEmpty {
                     Section("Up next · \(upcomingClips.count)") {
-                        ForEach(upcomingClips) { listRow($0) }
+                        ForEach(Array(upcomingClips.enumerated()), id: \.element.id) { offset, clip in
+                            let globalIndex = (currentIndex ?? -1) + 1 + offset
+                            listRow(clip, locked: globalIndex > maxAllowedIndex)
+                        }
                     }
                 }
             }
@@ -139,9 +183,10 @@ struct DiscoverView: View {
         }
     }
 
-    private func listRow(_ clip: ArgumentClip) -> some View {
+    private func listRow(_ clip: ArgumentClip, locked: Bool) -> some View {
         let isCurrent = clip.id == currentClip?.id
         return Button {
+            guard !locked else { return }
             if isCurrent {
                 clipPlayer.togglePlayPause()
             } else {
@@ -167,6 +212,11 @@ struct DiscoverView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                    if locked {
+                        Text("Finish listening to unlock")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 Spacer(minLength: 8)
@@ -174,10 +224,16 @@ struct DiscoverView: View {
                 if isCurrent {
                     Image(systemName: clipPlayer.isPlaying ? "speaker.wave.2.fill" : "pause.fill")
                         .foregroundStyle(SteelmanTheme.accent)
+                } else if locked {
+                    Image(systemName: "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
             }
+            .opacity(locked ? 0.45 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(locked)
         .id(clip.id)
     }
 
@@ -243,6 +299,12 @@ struct DiscoverView: View {
             return
         }
 
+        // Enforce scroll gate even if scrollPosition jumped somehow.
+        if let idx = clips.firstIndex(where: { $0.id == clip.id }), idx > maxAllowedIndex {
+            currentID = clips[maxAllowedIndex].id
+            return
+        }
+
         if countedIDs.insert(clip.id).inserted {
             totalSwiped += 1
         }
@@ -287,7 +349,8 @@ struct DiscoverView: View {
 
 // MARK: - Feed card
 
-/// Full-bleed page mirroring keepMovin FeedCard + NowPlayingContent.
+/// Full-bleed page: artwork + title/subtitle + transport (play/pause + skip back only).
+/// Side rail and answer body text are intentionally omitted for the current product pass.
 private struct ArgumentFeedCard: View {
     let clip: ArgumentClip
     let isCurrent: Bool
@@ -299,18 +362,23 @@ private struct ArgumentFeedCard: View {
             localArtworkURL: nil,
             title: clip.title,
             subtitle: clip.subtitle,
-            currentTime: clipPlayer.progress,
-            duration: clipPlayer.duration,
-            bufferedTime: clipPlayer.bufferedProgress,
-            isPlaying: clipPlayer.isPlaying,
-            description: clip.description,
-            sliderInteractive: true,
+            currentTime: isCurrent ? clipPlayer.progress : 0,
+            duration: isCurrent ? clipPlayer.duration : max(clip.duration, 1),
+            bufferedTime: isCurrent ? clipPlayer.bufferedProgress : 0,
+            maxScrubTime: isCurrent ? clipPlayer.farthestProgress : 0,
+            // Only the active card mirrors real engine state — other pages stay on "play".
+            isPlaying: isCurrent && clipPlayer.isPlaying,
+            description: "",
+            sliderInteractive: isCurrent,
+            showSkipForward: false,
+            showSkipBackward: true,
+            showDescription: false,
             onScrubbingChanged: { _ in },
             scrollable: false,
-            onSeek: { clipPlayer.seek(to: $0) },
-            onSkipBackward: { clipPlayer.skipBackward() },
-            onTogglePlayPause: { clipPlayer.togglePlayPause() },
-            onSkipForward: { clipPlayer.skipForward() },
+            onSeek: { guard isCurrent else { return }; clipPlayer.seek(to: $0) },
+            onSkipBackward: { guard isCurrent else { return }; clipPlayer.skipBackward() },
+            onTogglePlayPause: { guard isCurrent else { return }; clipPlayer.togglePlayPause() },
+            onSkipForward: nil,
             errorMessage: isCurrent ? clipPlayer.errorMessage : nil,
             accent: SteelmanTheme.color(for: clip.side),
             badge: clip.containsProfanity ? "Profanity" : nil,
@@ -318,56 +386,5 @@ private struct ArgumentFeedCard: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
-        .overlay(alignment: .trailing) { sideRail }
-        .overlay(alignment: .bottom) {
-            if !clip.answerText.isEmpty {
-                Text(clip.answerText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 28)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    /// Right-edge meta (replaces keepMovin's Add Episode / Add Show glass buttons).
-    private var sideRail: some View {
-        VStack(spacing: 14) {
-            metaPill(
-                systemImage: clip.side == .a ? "a.circle.fill" : "b.circle.fill",
-                label: clip.side.displayName,
-                tint: SteelmanTheme.color(for: clip.side)
-            )
-            if clip.leanConfidence > 0 {
-                metaPill(
-                    systemImage: "chart.bar.fill",
-                    label: "\(Int(clip.leanConfidence * 100))%",
-                    tint: .secondary
-                )
-            }
-            if clip.audioURL != nil {
-                metaPill(systemImage: "waveform", label: "Audio", tint: .secondary)
-            } else {
-                metaPill(systemImage: "text.alignleft", label: "Text", tint: .secondary)
-            }
-        }
-        .padding(.trailing, 16)
-    }
-
-    private func metaPill(systemImage: String, label: String, tint: Color) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 48, height: 48)
-                .background(.ultraThinMaterial, in: Circle())
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(label)
     }
 }
