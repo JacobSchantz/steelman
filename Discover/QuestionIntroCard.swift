@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// The card that opens a question: a solid screen that does nothing but read the question
-/// out loud. Every question starts here — you hear what's being argued before you hear
-/// anyone argue it, and (like a clip) you can't scroll past it until it has been read.
+/// The card that opens a question: a screen that does nothing but read the question out
+/// loud. Every question starts here — you hear what's being argued before you hear anyone
+/// argue it, and (like a clip) you can't scroll past it until it has been read.
+///
+/// It sits on the same background as every other page. The question doesn't need a colour
+/// of its own to be understood as a question — the type and the reading say that.
 struct QuestionIntroCard: View {
     let question: Question
     let answerCount: Int
@@ -15,7 +18,7 @@ struct QuestionIntroCard: View {
 
     var body: some View {
         ZStack {
-            SteelmanTheme.accent
+            Color(.systemBackground)
 
             VStack(spacing: 18) {
                 Spacer()
@@ -24,17 +27,17 @@ struct QuestionIntroCard: View {
                     .font(.caption.weight(.bold))
                     .tracking(1.8)
                     .textCase(.uppercase)
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(.secondary)
 
                 Text(question.prompt)
                     .font(.system(.largeTitle, design: .serif).weight(.bold))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 28)
 
                 Text(answerCountText)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(.secondary)
 
                 Spacer()
 
@@ -68,11 +71,11 @@ struct QuestionIntroCard: View {
                 Text("Reading the question")
             }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.8))
+            .foregroundStyle(SteelmanTheme.accent)
         } else if answerCount == 0 {
             Text("Tap to hear it again")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(.secondary)
         } else {
             VStack(spacing: 6) {
                 Image(systemName: "chevron.compact.up")
@@ -80,7 +83,7 @@ struct QuestionIntroCard: View {
                 Text("Swipe up for the first argument")
                     .font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(.white.opacity(0.8))
+            .foregroundStyle(.secondary)
         }
     }
 }

@@ -120,17 +120,14 @@ struct DiscoverView: View {
                 if pages.isEmpty {
                     emptyState
                 } else {
-                    feed
+                    VStack(spacing: 0) {
+                        questionHeader
+                        feed
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(currentQuestion?.prompt ?? "")
-                        .font(.footnote.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingPicker = true } label: {
                         Image(systemName: "text.bubble.fill")
@@ -164,6 +161,20 @@ struct DiscoverView: View {
             .onChange(of: currentPageID) { _, newID in handleLanding(on: newID) }
             .onDisappear { lockMessageTask?.cancel() }
         }
+    }
+
+    /// The question being argued, under the toolbar rather than in it. In the toolbar it
+    /// was squeezed into the inline title slot — one truncated line, crowded against the
+    /// status bar. Here it has the room to be read in full before you hear anyone argue it.
+    private var questionHeader: some View {
+        Text(currentQuestion?.prompt ?? "")
+            .font(.headline)
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 18)
     }
 
     private var feed: some View {
@@ -414,9 +425,10 @@ enum DiscoverPage: Identifiable, Equatable {
 
 // MARK: - Feed card
 
-/// Full-bleed page: artwork + side label + transport (play/pause + skip back only).
+/// Full-bleed page: the transcript of what this person said, and the transport that plays
+/// it (play/pause + skip back only). No artwork and no title — an argument has neither.
 /// The bar is a read-only indicator — there is no scrubbing and no skip-forward. The
-/// question isn't repeated here: it's in the toolbar, and it opened the question.
+/// question isn't repeated here: it's in the header, and it opened the question.
 private struct ArgumentFeedCard: View {
     let clip: ArgumentClip
     let isCurrent: Bool
@@ -426,21 +438,13 @@ private struct ArgumentFeedCard: View {
 
     var body: some View {
         NowPlayingContent(
-            artworkURL: nil,
-            localArtworkURL: nil,
-            title: clip.title,
-            subtitle: nil,
+            transcript: clip.answerText,
             currentTime: isCurrent ? player.progress : 0,
             duration: isCurrent ? player.duration : max(clip.duration, 1),
             bufferedTime: isCurrent ? player.bufferedProgress : 0,
             // Only the active card mirrors real engine state — other pages stay on "play".
             isPlaying: isCurrent && player.isPlaying,
-            description: "",
-            sliderInteractive: false,
             showSkipBackward: true,
-            showDescription: false,
-            scrollable: false,
-            onSeek: { _ in },
             onSkipBackward: { guard isCurrent else { return }; player.skipBackward() },
             onTogglePlayPause: { guard isCurrent else { return }; player.togglePlayPause() },
             errorMessage: isCurrent ? player.errorMessage : nil,
