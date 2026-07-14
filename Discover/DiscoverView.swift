@@ -9,6 +9,8 @@ import SwiftUI
 ///
 /// Product gates on the feed itself:
 /// - No skip-forward and no scrubbing at all — the bar is a playback indicator.
+/// - Hearing a page out carries you to the next one on its own (see `advanceToNextPage`),
+///   so the feed plays hands-free: put the phone down and it keeps arguing at you.
 /// - The next page can be peeked at by scrolling, but the feed bounces back with a lock
 ///   message until the current page — question card or clip — has been heard to the end.
 ///   The gate is per pass through a question (see `unlockedIndex`), so coming back around
@@ -173,8 +175,10 @@ struct DiscoverView: View {
             .onChange(of: questions.questions) { _, _ in rebuildClips() }
             .onChange(of: player.finishedItemID) { _, finished in
                 guard let finished else { return }
+                // Unlock first: the page we're about to move onto has to be earned before
+                // landing on it, or `handleLanding` would bounce us straight back off it.
                 unlockNextPage(afterHearing: finished)
-                advanceIfQuestionFinished(afterHearing: finished)
+                advanceToNextPage(afterHearing: finished)
             }
             .onChange(of: currentPageID) { _, newID in handleLanding(on: newID) }
             .onDisappear { lockMessageTask?.cancel() }
@@ -309,17 +313,26 @@ struct DiscoverView: View {
         persist()
     }
 
-    /// Last clip of the question just played out — roll into the next question's card so
-    /// the feed keeps going without the listener having to do anything.
-    private func advanceIfQuestionFinished(afterHearing pageID: UUID) {
+    /// A page played out — roll straight onto the next one. Listening is the whole loop, so
+    /// hearing something to the end is the listener asking for what comes after it: the
+    /// question card hands you the first argument, an argument hands you the next one, and
+    /// the last argument of a question hands you the next question's card (where
+    /// `handleLanding` completes the handoff into that question). Scrolling still works; it
+    /// just isn't the only way forward anymore.
+    ///
+    /// Only the page the listener is *on* advances. A card that finishes behind them — one
+    /// they scrolled back from, or that was still playing when they swiped away — must not
+    /// yank the feed somewhere they didn't ask to be.
+    private func advanceToNextPage(afterHearing pageID: UUID) {
         guard currentPageID == pageID,
               let idx = pages.firstIndex(where: { $0.id == pageID }),
-              case .clip = pages[idx],
-              idx == pages.count - 2,
-              case .question = pages[pages.count - 1] else { return }
+              pages.indices.contains(idx + 1),
+              // Belt and braces: never auto-land on a page the listener hasn't earned. In
+              // practice `unlockNextPage` just earned it, but the two rules stay independent.
+              idx + 1 <= maxAllowedIndex else { return }
 
         withAnimation(.snappy) {
-            currentPageID = pages[pages.count - 1].id
+            currentPageID = pages[idx + 1].id
         }
     }
 
