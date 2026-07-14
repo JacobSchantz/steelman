@@ -1,1 +1,13 @@
-{"results":[],"image_urls":["screenshot-EE91FD4D-7C15-40CF-ABDC-F87795CA0A5D.jpg"],"description":"Voice note","updated_at":"2026-07-14T19:58:16.185Z","id":"voice-e234b08f","platform":"ios","created_at":"2026-07-14T19:58:16.185Z","test_instructions":[]}
+{
+  "results": [],
+  "image_urls": [
+    "screenshot-EE91FD4D-7C15-40CF-ABDC-F87795CA0A5D.jpg"
+  ],
+  "description": "simplify this page quite a bit. Instead of saying discover up top, it should say the actual question that's being asked. And then in the top right, there should be an icon, a questions icon that we can open it and we can select a question. Questions, we should not say any of the details about the answers. It should just say, what is the question and the number of answers? And then selecting that changes which question we're then scrolling through. So if we hit the end of a question when scrolling, it should automatically go to the next recommended question. And the first, when we switch to a new question, the first thing that should happen is the question should be read. There should be a screen, a solid screen that just reads the question. And that is the feat. Also, you can get rid of all the other tabs. We don't need any of those.",
+  "updated_at": "2026-07-14T19:59:10.000Z",
+  "id": "voice-e234b08f",
+  "platform": "ios",
+  "created_at": "2026-07-14T19:58:16.185Z",
+  "test_instructions": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
