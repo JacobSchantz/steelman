@@ -11,6 +11,9 @@ struct Answer: Identifiable, Codable, Hashable {
     var audioFileName: String?
     var createdAt: Date
     var analysis: AnswerAnalysis?
+    /// Whether you gave this answer a thumbs up or down. Optional — and optional in the JSON
+    /// too — so answers saved before reactions existed still decode as `nil` (no reaction).
+    var reaction: AnswerReaction?
 
     init(
         id: UUID = UUID(),
@@ -19,7 +22,8 @@ struct Answer: Identifiable, Codable, Hashable {
         text: String = "",
         audioFileName: String? = nil,
         createdAt: Date = Date(),
-        analysis: AnswerAnalysis? = nil
+        analysis: AnswerAnalysis? = nil,
+        reaction: AnswerReaction? = nil
     ) {
         self.id = id
         self.questionId = questionId
@@ -28,6 +32,7 @@ struct Answer: Identifiable, Codable, Hashable {
         self.audioFileName = audioFileName
         self.createdAt = createdAt
         self.analysis = analysis
+        self.reaction = reaction
     }
 
     /// Side used for deck ordering / alternating: AI lean if available, else claimed.
@@ -36,6 +41,14 @@ struct Answer: Identifiable, Codable, Hashable {
     }
 
     var hasAudio: Bool { audioFileName != nil }
+}
+
+/// A thumbs up or down you attach to an answer. Only two cases: the absence of a reaction is
+/// modelled by `Answer.reaction == nil`, not a third `.none` case, so a rated answer is always
+/// exactly one of these.
+enum AnswerReaction: String, Codable, Hashable, CaseIterable {
+    case like
+    case dislike
 }
 
 /// AI review of an answer: profanity + which side of the question it supports.

@@ -52,6 +52,15 @@ final class AnswerStore: ObservableObject {
         objectWillChange.send()
     }
 
+    /// Set (or clear, with `nil`) the thumbs up/down on an answer. Looks the answer up by id
+    /// so a caller holding a slightly stale copy still updates the right stored answer.
+    func setReaction(_ reaction: AnswerReaction?, for answerId: UUID) {
+        guard let i = answers.firstIndex(where: { $0.id == answerId }) else { return }
+        answers[i].reaction = reaction
+        persist()
+        objectWillChange.send()
+    }
+
     func delete(_ answer: Answer) {
         if let name = answer.audioFileName {
             try? FileManager.default.removeItem(at: audioDir.appendingPathComponent(name))
