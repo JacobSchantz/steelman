@@ -1,1 +1,11 @@
-{"id":"voice-3147e8ac","image_urls":[],"results":[],"platform":"ios","created_at":"2026-07-15T16:53:24.408Z","test_instructions":[],"description":"Voice note","updated_at":"2026-07-15T16:53:24.408Z"}
+{
+  "id": "voice-3147e8ac",
+  "image_urls": [],
+  "results": [],
+  "platform": "ios",
+  "created_at": "2026-07-15T16:53:24.408Z",
+  "test_instructions": [],
+  "description": "Let's move the finish this one first text down to the bottom above the progress bar with some padding instead of up top.",
+  "updated_at": "2026-07-15T16:54:21.000Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
