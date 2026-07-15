@@ -12,9 +12,15 @@ import SwiftUI
 final class UserStore: ObservableObject {
     @Published private(set) var users: [User] = []
     @Published private(set) var currentUserID: UUID
+    /// Whether the account is signed in. The app has no auth backend yet, so this is a local
+    /// flag: signing out drops the Profile tab to its sign-in screen without touching any data,
+    /// and signing back in restores it. It's the hook a real identity provider (Sign in with
+    /// Apple, a server) would replace later.
+    @Published private(set) var isSignedIn: Bool
 
     private let fileURL: URL
     private let currentKey = "steelman.currentUserID"
+    private let signedInKey = "steelman.isSignedIn"
     private let encoder = JSONEncoder.steelman
     private let decoder = JSONDecoder.steelman
 
@@ -30,6 +36,10 @@ final class UserStore: ObservableObject {
         // anymore (a deleted user, or a fresh install): fall back to the first user.
         let savedID = UserDefaults.standard.string(forKey: currentKey).flatMap(UUID.init)
         currentUserID = roster.first { $0.id == savedID }?.id ?? roster[0].id
+
+        // Default to signed in so existing installs aren't kicked out; sign-out is an explicit
+        // choice the account holder makes.
+        isSignedIn = UserDefaults.standard.object(forKey: signedInKey) as? Bool ?? true
 
         if loaded.isEmpty { persist() }
         UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
@@ -77,6 +87,23 @@ final class UserStore: ObservableObject {
             UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
         }
         persist()
+    }
+
+    /// Sign in the account, optionally renaming the active user to the name typed on the
+    /// sign-in screen so "my account" carries the name I just gave it.
+    func signIn(name: String? = nil) {
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            rename(currentUserID, to: name)
+        }
+        isSignedIn = true
+        UserDefaults.standard.set(true, forKey: signedInKey)
+    }
+
+    /// Sign out. Local-only: nothing is deleted, the Profile tab just returns to its sign-in
+    /// screen. Answers and the account roster stay on the device.
+    func signOut() {
+        isSignedIn = false
+        UserDefaults.standard.set(false, forKey: signedInKey)
     }
 
     private static func load(from url: URL, decoder: JSONDecoder) -> [User] {

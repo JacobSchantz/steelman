@@ -23,9 +23,10 @@ struct SteelmanApp: App {
 /// `QuestionsView` (add a question) is still in the project but no longer has an entry point —
 /// it's one line away from coming back behind a button if we want it on this screen.
 ///
-/// **Users** is the third tab: the roster of people who answer on this device and a picker for
-/// who's currently answering. It's what makes the two-per-question rule (one answer per side,
-/// per person) mean something — the same phone can carry several people's takes.
+/// **Profile** is the third tab: *my account*. It leads with a single account — mine — the way
+/// a TikTok profile does (avatar, name, answer count, sign in / out), with an account switcher
+/// tucked below it so the two-per-question rule (one answer per side, per person) still means
+/// something: the same phone can carry several people's takes.
 @MainActor
 struct RootView: View {
     @ObservedObject var questions: QuestionStore
@@ -44,9 +45,9 @@ struct RootView: View {
                     Label("Answers", systemImage: "text.bubble")
                 }
 
-            UsersView(users: users, answers: answers)
+            ProfileView(users: users, answers: answers)
                 .tabItem {
-                    Label("Users", systemImage: "person.2")
+                    Label("Profile", systemImage: "person.crop.circle")
                 }
         }
         .tint(SteelmanTheme.accent)

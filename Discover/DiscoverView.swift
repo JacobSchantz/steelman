@@ -155,6 +155,11 @@ struct DiscoverView: View {
                     // page down or up. As an overlay they expand and contract in place and the
                     // feed underneath never moves.
                     feed
+                        // TikTok-style action column: the feed's own controls now ride a
+                        // vertical rail on the right edge of the video, within thumb's reach,
+                        // instead of sitting in the navigation/tab chrome. The question banner
+                        // and download note still float along the bottom.
+                        .overlay(alignment: .bottomTrailing) { feedActionRail }
                         .overlay(alignment: .bottom) {
                             VStack(spacing: 0) {
                                 voiceDownloadNote
@@ -167,47 +172,7 @@ struct DiscoverView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // All of the feed's controls now live at the bottom, down by the tab bar and
-                // within thumb's reach, instead of up in the navigation bar. The gear still
-                // leads on the left and the question controls sit opposite it on the right —
-                // a single `Spacer` in the group splits the two.
-                ToolbarItemGroup(placement: .bottomBar) {
-                    Button { showingSettings = true } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Settings")
-
-                    Spacer()
-
-                    // One tap toggles the question banner — no menu to open first. The chevron
-                    // points down while the question is showing (tap to collapse it away) and
-                    // flips up once it's hidden (tap to bring it back).
-                    Button {
-                        withAnimation(.snappy) { showQuestionHeader.toggle() }
-                    } label: {
-                        Image(systemName: showQuestionHeader ? "chevron.down" : "chevron.up")
-                    }
-                    .accessibilityLabel(showQuestionHeader ? "Hide the question" : "Show the question")
-
-                    Button { browsingQuestions = true } label: {
-                        Image(systemName: "text.bubble.fill")
-                    }
-                    .accessibilityLabel("Browse questions")
-
-                    // Draft an answer to the question you're currently listening to, without
-                    // leaving the feed. Pause first so you're not writing over the top of an
-                    // argument playing behind the sheet.
-                    Button {
-                        if player.isPlaying { player.togglePlayPause() }
-                        composingAnswer = true
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                    }
-                    .accessibilityLabel("Answer this question")
-                    .disabled(currentQuestion == nil)
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             // A page you go to, not a sheet that covers the feed: browsing the library is a
             // place of its own, with room for a search field, the categories, and enough of
             // each question to recognise it.
@@ -273,6 +238,69 @@ struct DiscoverView: View {
                 advanceTask?.cancel()
             }
         }
+    }
+
+    /// The TikTok-style vertical action rail on the right edge of the feed. Top to bottom:
+    /// answer this question (the primary, tinted action), browse questions, hide/show the
+    /// question banner, and settings. It floats over the video with a little bottom inset so it
+    /// clears the question banner, and each control is a circular glyph the way the like/comment
+    /// column reads on TikTok.
+    private var feedActionRail: some View {
+        VStack(spacing: 20) {
+            railButton(
+                systemImage: "square.and.pencil",
+                label: "Answer this question",
+                tint: SteelmanTheme.accent
+            ) {
+                if player.isPlaying { player.togglePlayPause() }
+                composingAnswer = true
+            }
+            .disabled(currentQuestion == nil)
+            .opacity(currentQuestion == nil ? 0.4 : 1)
+
+            railButton(systemImage: "text.bubble.fill", label: "Browse questions") {
+                browsingQuestions = true
+            }
+
+            railButton(
+                systemImage: showQuestionHeader ? "chevron.down" : "chevron.up",
+                label: showQuestionHeader ? "Hide the question" : "Show the question"
+            ) {
+                withAnimation(.snappy) { showQuestionHeader.toggle() }
+            }
+
+            railButton(systemImage: "gearshape.fill", label: "Settings") {
+                showingSettings = true
+            }
+        }
+        .padding(.trailing, 14)
+        .padding(.bottom, 132)
+    }
+
+    /// One circular control on the action rail. Defaults to a translucent material chip; pass a
+    /// `tint` to fill it for the primary action.
+    private func railButton(
+        systemImage: String,
+        label: String,
+        tint: Color? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.white)
+                .frame(width: 50, height: 50)
+                .background {
+                    if let tint {
+                        Circle().fill(tint)
+                    } else {
+                        Circle().fill(.ultraThinMaterial)
+                    }
+                }
+                .overlay(Circle().stroke(.white.opacity(0.18)))
+                .shadow(radius: 6, y: 2)
+        }
+        .accessibilityLabel(label)
     }
 
     /// The question being argued, floating over the bottom of the feed — just above the
