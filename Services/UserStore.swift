@@ -1,16 +1,19 @@
 import Foundation
 import SwiftUI
 
-/// The roster of local users plus which one is *active*. Every answer is stamped with the
-/// active user's id at submit time, and the "one answer per side" rule is checked against
-/// that same id — so switching the active user is how one device stands in for several people.
+/// The single signed-in user. Every answer is stamped with this user's id at submit time, and
+/// the "one answer per side" rule is checked against it. There's no roster and no switching —
+/// one person is signed in, so any answer they submit is obviously theirs.
 ///
-/// There is always at least one user and always an active one: the store seeds a first user on
-/// an empty load and never lets the active id dangle, so callers can read `currentUser` without
-/// unwrapping a "no user yet" state.
+/// There is always a user: the store seeds one on an empty load and preserves the id across
+/// launches, so callers can read `currentUser` without unwrapping a "no user yet" state. The
+/// backing file is still a `[User]` array (older installs may hold several from when switching
+/// existed); we keep the saved-active user and simply ignore the rest.
 @MainActor
 final class UserStore: ObservableObject {
-    @Published private(set) var users: [User] = []
+    /// The full roster as loaded from disk. Kept private now that there's no switching UI — it
+    /// exists only to preserve the active user's id (and any legacy extras) across launches.
+    private var users: [User] = []
     @Published private(set) var currentUserID: UUID
     /// Whether the account is signed in. The app has no auth backend yet, so this is a local
     /// flag: signing out drops the Profile tab to its sign-in screen without touching any data,
@@ -53,47 +56,18 @@ final class UserStore: ObservableObject {
         users.first { $0.id == id }
     }
 
-    /// Add a user and make them active, so the natural next thing — submitting an answer —
-    /// is attributed to the person you just created.
-    @discardableResult
-    func add(name: String) -> User {
-        let user = User(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
-        users.append(user)
-        currentUserID = user.id
-        persist()
-        UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
-        return user
-    }
-
-    func rename(_ userId: UUID, to name: String) {
-        guard let i = users.firstIndex(where: { $0.id == userId }) else { return }
+    /// Rename the signed-in user.
+    func rename(to name: String) {
+        guard let i = users.firstIndex(where: { $0.id == currentUserID }) else { return }
         users[i].name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         persist()
     }
 
-    func setCurrent(_ userId: UUID) {
-        guard users.contains(where: { $0.id == userId }) else { return }
-        currentUserID = userId
-        UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
-    }
-
-    /// Remove a user. The last user can't be deleted — there's always someone to attribute an
-    /// answer to. If the active user is the one removed, activity falls to whoever's first.
-    func delete(_ userId: UUID) {
-        guard users.count > 1 else { return }
-        users.removeAll { $0.id == userId }
-        if currentUserID == userId {
-            currentUserID = users[0].id
-            UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
-        }
-        persist()
-    }
-
-    /// Sign in the account, optionally renaming the active user to the name typed on the
-    /// sign-in screen so "my account" carries the name I just gave it.
+    /// Sign in the account, optionally renaming the user to the name typed on the sign-in
+    /// screen so "my account" carries the name I just gave it.
     func signIn(name: String? = nil) {
         if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
-            rename(currentUserID, to: name)
+            rename(to: name)
         }
         isSignedIn = true
         UserDefaults.standard.set(true, forKey: signedInKey)

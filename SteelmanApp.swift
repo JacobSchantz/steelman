@@ -23,10 +23,9 @@ struct SteelmanApp: App {
 /// `QuestionsView` (add a question) is still in the project but no longer has an entry point —
 /// it's one line away from coming back behind a button if we want it on this screen.
 ///
-/// **Profile** is the third tab: *my account*. It leads with a single account — mine — the way
-/// a TikTok profile does (avatar, name, answer count, sign in / out), with an account switcher
-/// tucked below it so the two-per-question rule (one answer per side, per person) still means
-/// something: the same phone can carry several people's takes.
+/// **Profile** is the third tab: *my account*. There's exactly one user signed in, so it's just
+/// that — my avatar, my name, my answer count, and sign in / out. No account switcher: every
+/// answer is obviously mine, and the Answers tab shows only mine.
 @MainActor
 struct RootView: View {
     @ObservedObject var questions: QuestionStore
@@ -40,7 +39,7 @@ struct RootView: View {
                     Label("Feed", systemImage: "play.rectangle.on.rectangle")
                 }
 
-            AnswersView(questions: questions, answers: answers)
+            AnswersView(questions: questions, answers: answers, users: users)
                 .tabItem {
                     Label("Answers", systemImage: "text.bubble")
                 }

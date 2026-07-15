@@ -9,13 +9,22 @@ import SwiftUI
 struct AnswersView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
+    @ObservedObject var users: UserStore
 
     @State private var editingAnswer: Answer?
+
+    /// Just the signed-in user's answers. This tab is "everything *you've* said," so it shows
+    /// only answers stamped with the current user's id — not the seed answers (unattributed) or,
+    /// once other people's takes land on the device, theirs. Discover still plays the whole
+    /// corpus at you; this list is yours alone.
+    private var myAnswers: [Answer] {
+        answers.answers.filter { $0.userId == users.currentUserID }
+    }
 
     /// Answers grouped by their question, newest question activity first, so the list reads as
     /// "here's what you said about X, and about Y" rather than one undifferentiated stream.
     private var groups: [AnswerGroup] {
-        let byQuestion = Dictionary(grouping: answers.answers, by: \.questionId)
+        let byQuestion = Dictionary(grouping: myAnswers, by: \.questionId)
         return byQuestion.compactMap { questionId, items -> AnswerGroup? in
             guard let question = questions.question(id: questionId) else { return nil }
             let sorted = items.sorted { $0.createdAt > $1.createdAt }
@@ -27,12 +36,12 @@ struct AnswersView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if answers.answers.isEmpty {
+                if myAnswers.isEmpty {
                     emptyState
                 } else {
                     List {
                         Section {
-                            AnswerStatsView(stats: AnswerStats(answers: answers.answers, questions: questions))
+                            AnswerStatsView(stats: AnswerStats(answers: myAnswers, questions: questions))
                                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         }
 

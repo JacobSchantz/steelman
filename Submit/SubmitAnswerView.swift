@@ -40,20 +40,6 @@ struct SubmitAnswerView: View {
                     }
 
                     Section {
-                        HStack(spacing: 10) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .foregroundStyle(users.currentUser.color)
-                            Text(users.currentUser.normalizedName ?? "Unnamed")
-                                .font(.subheadline.weight(.medium))
-                            Spacer()
-                        }
-                    } header: {
-                        Text("Answering as")
-                    } footer: {
-                        Text("Answers are attributed to the active user (change it in the Users tab). Each person gets one answer per side of a question.")
-                    }
-
-                    Section {
                         TextField("Write or dictate your strongest honest case…", text: $text, axis: .vertical)
                             .lineLimit(6...16)
                             .disabled(dictation.isListening)
@@ -191,15 +177,15 @@ struct SubmitAnswerView: View {
             claimedSide: nil
         )
 
-        // One answer per side, per person. The side is only known once the AI has classified
-        // the text, so the limit is enforced here — after analysis, before the answer is
-        // saved — against the currently active user. If they've already taken this side (which
-        // also means they've hit two answers on a question once both sides are spoken for),
-        // the submission is refused and the text is left in place to edit or redirect.
+        // One answer per side. The side is only known once the AI has classified the text, so
+        // the limit is enforced here — after analysis, before the answer is saved — against the
+        // signed-in user. If you've already taken this side (which also means you've hit two
+        // answers on a question once both sides are spoken for), the submission is refused and
+        // the text is left in place to edit or redirect.
         let author = users.currentUser
         if answers.hasAnswered(side: analysis.leanSide, for: question.id, by: author.id) {
             statusIsError = true
-            statusMessage = "\(author.normalizedName ?? "This user") already argued “\(question.label(for: analysis.leanSide))” on this question. Each person gets one answer per side — switch users or edit your existing answer."
+            statusMessage = "You already argued “\(question.label(for: analysis.leanSide))” on this question. You get one answer per side — edit your existing answer to change it."
             return
         }
 
