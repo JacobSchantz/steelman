@@ -21,21 +21,11 @@ struct QuestionIntroCard: View {
             VStack(spacing: 18) {
                 Spacer()
 
-                Text("Question")
-                    .font(.caption.weight(.bold))
-                    .tracking(1.8)
-                    .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
-
                 Text(question.prompt)
                     .font(.system(.largeTitle, design: .serif).weight(.bold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 28)
-
-                Text(answerCountText)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
 
                 Spacer()
 
@@ -50,14 +40,6 @@ struct QuestionIntroCard: View {
             player.togglePlayPause()
         }
         .overlay { if isLocked { LockedPeekOverlay() } }
-    }
-
-    private var answerCountText: String {
-        switch answerCount {
-        case 0: return "No answers yet"
-        case 1: return "1 answer"
-        default: return "\(answerCount) answers"
-        }
     }
 
     @ViewBuilder

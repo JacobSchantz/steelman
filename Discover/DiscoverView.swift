@@ -24,6 +24,12 @@ struct DiscoverView: View {
     @StateObject private var speech = KokoroModelStore.shared
     @ObservedObject private var speechSettings = SpeechSettings.shared
 
+    /// Whether the question banner under the toolbar is shown. Some listeners want the
+    /// prompt in view the whole way through a question; others want the video and the
+    /// argument to have the screen to themselves. The dropdown by the browse button toggles
+    /// it, and `@AppStorage` remembers the choice across launches.
+    @AppStorage("discover.showQuestionHeader") private var showQuestionHeader = true
+
     /// The question being scrolled through. Nil until the first recommendation lands.
     @State private var selectedQuestionID: UUID?
     /// Clips for the selected question only, in alternating-side order.
@@ -139,7 +145,9 @@ struct DiscoverView: View {
                     emptyState
                 } else {
                     VStack(spacing: 0) {
-                        questionHeader
+                        if showQuestionHeader {
+                            questionHeader
+                        }
                         voiceDownloadNote
                         feed
                     }
@@ -152,6 +160,19 @@ struct DiscoverView: View {
                         Image(systemName: "text.bubble.fill")
                     }
                     .accessibilityLabel("Browse questions")
+                }
+                // The dropdown next to the browse button: show or hide the question banner.
+                // A Menu renders as the little pull-down the report asked for, and the eye
+                // in the toolbar reflects the current state at a glance.
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        Toggle(isOn: $showQuestionHeader) {
+                            Label("Show question", systemImage: "text.alignleft")
+                        }
+                    } label: {
+                        Image(systemName: showQuestionHeader ? "eye" : "eye.slash")
+                    }
+                    .accessibilityLabel("Show or hide the question")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: {
