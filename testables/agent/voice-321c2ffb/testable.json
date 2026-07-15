@@ -1,1 +1,11 @@
-{"created_at":"2026-07-15T14:36:45.013Z","description":"Voice note","platform":"ios","updated_at":"2026-07-15T14:36:45.013Z","id":"voice-321c2ffb","test_instructions":[],"results":[],"image_urls":[]}
+{
+  "created_at": "2026-07-15T14:36:45.013Z",
+  "description": "Let's move all the controls down below into the tab bar and then we can also move the question indicator down there as well.",
+  "platform": "ios",
+  "updated_at": "2026-07-15T14:43:57.000Z",
+  "id": "voice-321c2ffb",
+  "test_instructions": [],
+  "results": [],
+  "image_urls": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
