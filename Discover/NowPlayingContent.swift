@@ -221,11 +221,13 @@ private struct PlaybackTapControls: ViewModifier {
     @ViewBuilder
     private var flashView: some View {
         if let flash {
+            // Just the glyph — no glass disc behind it. It's a momentary state readout over the
+            // video, so it reads as the bare play/pause mark at half strength rather than a solid
+            // button, and fades on its own after a beat.
             Image(systemName: flash.systemImage)
                 .font(.system(size: 60, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.white.opacity(0.5))
                 .frame(width: 120, height: 120)
-                .background(.ultraThinMaterial, in: Circle())
                 .shadow(radius: 12)
                 .transition(.scale(scale: 0.7).combined(with: .opacity))
                 .allowsHitTesting(false)

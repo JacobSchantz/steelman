@@ -261,8 +261,7 @@ struct DiscoverView: View {
         VStack(spacing: 12) {
             railButton(
                 systemImage: "square.and.pencil",
-                label: "Answer this question",
-                tint: SteelmanTheme.accent
+                label: "Answer this question"
             ) {
                 if player.isPlaying { player.togglePlayPause() }
                 composingAnswer = true
@@ -283,14 +282,13 @@ struct DiscoverView: View {
         }
     }
 
-    /// One circular control on the action rail, sitting on Liquid Glass. Pass a `tint` to fill
-    /// the primary action with tinted glass; the rest use plain regular glass. On OS versions
-    /// before Liquid Glass shipped, it falls back to the old translucent-material chip so the
-    /// rail still reads over the video.
+    /// One circular control on the action rail, sitting on Liquid Glass. Every button is plain
+    /// regular glass — clear, with no fill of its own — so the rail reads as glass floating over
+    /// the video rather than solid chips. On OS versions before Liquid Glass shipped, it falls
+    /// back to the old translucent-material chip so the rail still reads over the video.
     private func railButton(
         systemImage: String,
         label: String,
-        tint: Color? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -298,7 +296,7 @@ struct DiscoverView: View {
                 .font(.title2)
                 .foregroundStyle(.white)
                 .frame(width: 50, height: 50)
-                .railGlassBackground(tint: tint)
+                .railGlassBackground()
         }
         .accessibilityLabel(label)
     }
@@ -720,24 +718,17 @@ private struct ArgumentFeedCard: View {
 // MARK: - Rail glass
 
 private extension View {
-    /// The circular Liquid Glass chip behind a rail button. A `tint` fills the glass for the
-    /// primary action; the rest use plain regular glass. Both are `.interactive()` so the glass
-    /// reacts to touch. Before Liquid Glass (pre-iOS 26) there's no glass to lean on, so it falls
-    /// back to the translucent-material circle the rail used previously.
+    /// The circular Liquid Glass chip behind a rail button. Plain regular glass with no fill of
+    /// its own — `.interactive()` so it reacts to touch, but otherwise fully clear so the button
+    /// is the glass, not a tinted disc. Before Liquid Glass (pre-iOS 26) there's no glass to lean
+    /// on, so it falls back to the translucent-material circle the rail used previously.
     @ViewBuilder
-    func railGlassBackground(tint: Color?) -> some View {
+    func railGlassBackground() -> some View {
         if #available(iOS 26.0, *) {
-            let glass = (tint.map { Glass.regular.tint($0) } ?? .regular).interactive()
-            self.glassEffect(glass, in: .circle)
+            self.glassEffect(.regular.interactive(), in: .circle)
         } else {
             self
-                .background {
-                    if let tint {
-                        Circle().fill(tint)
-                    } else {
-                        Circle().fill(.ultraThinMaterial)
-                    }
-                }
+                .background(Circle().fill(.ultraThinMaterial))
                 .overlay(Circle().stroke(.white.opacity(0.18)))
                 .shadow(radius: 6, y: 2)
         }
