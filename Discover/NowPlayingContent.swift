@@ -86,7 +86,10 @@ struct NowPlayingContent: View {
                 bufferedTime: bufferedTime,
                 accent: accent
             )
-            .padding(.horizontal)
+            // The bar is a read-only indicator, not a scrubber, so it reads best spanning the
+            // whole screen. The negative inset cancels the container's default `.padding()` so
+            // it runs edge to edge while the time labels below keep their margins.
+            .padding(.horizontal, -16)
 
             HStack {
                 Text(formatTime(currentTime))
@@ -131,13 +134,15 @@ struct PlaybackIndicator: View {
             let buffered = min(max((bufferedTime ?? currentTime) / total, played), 1)
 
             ZStack(alignment: .leading) {
+                // A subtle gray bar rather than the side's accent: it's a passive position
+                // readout, not something to draw the eye, so it stays quiet against the video.
                 Capsule()
-                    .fill(Color.secondary.opacity(0.2))
+                    .fill(Color.gray.opacity(0.25))
                 Capsule()
-                    .fill(accent.opacity(0.35))
+                    .fill(Color.gray.opacity(0.5))
                     .frame(width: width * buffered)
                 Capsule()
-                    .fill(accent)
+                    .fill(Color.gray.opacity(0.85))
                     .frame(width: width * played)
             }
             .frame(height: trackHeight)

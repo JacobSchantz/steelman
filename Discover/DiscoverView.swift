@@ -344,14 +344,12 @@ struct DiscoverView: View {
                 question: question,
                 answerCount: answers.answers(for: question.id).count,
                 isCurrent: isCurrent,
-                isLocked: locked,
                 player: player
             )
         case .clip(let clip):
             ArgumentFeedCard(
                 clip: clip,
                 isCurrent: isCurrent,
-                isLocked: locked,
                 player: player
             )
         }
@@ -648,8 +646,6 @@ enum DiscoverPage: Identifiable, Equatable {
 private struct ArgumentFeedCard: View {
     let clip: ArgumentClip
     let isCurrent: Bool
-    /// The peek page: visible so the user knows more is coming, but not yet earned.
-    let isLocked: Bool
     @ObservedObject var player: ClipPreviewPlayer
 
     var body: some View {
@@ -677,6 +673,5 @@ private struct ArgumentFeedCard: View {
             onToggle: { player.togglePlayPause() },
             onSkipBackward: { player.skipBackward() }
         )
-        .overlay { if isLocked { LockedPeekOverlay() } }
     }
 }

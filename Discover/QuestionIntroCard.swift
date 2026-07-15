@@ -10,8 +10,6 @@ struct QuestionIntroCard: View {
     let question: Question
     let answerCount: Int
     let isCurrent: Bool
-    /// The peek page: visible so the user knows what's next, but not yet earned.
-    let isLocked: Bool
     @ObservedObject var player: ClipPreviewPlayer
 
     private var isReading: Bool { isCurrent && player.isPlaying }
@@ -42,7 +40,6 @@ struct QuestionIntroCard: View {
             onToggle: { player.togglePlayPause() },
             onSkipBackward: { player.skipBackward() }
         )
-        .overlay { if isLocked { LockedPeekOverlay() } }
     }
 
     @ViewBuilder
@@ -75,28 +72,5 @@ struct QuestionIntroCard: View {
             }
             .foregroundStyle(.secondary)
         }
-    }
-}
-
-/// Frosts a peek page and swallows taps, so the page beyond what you've earned can be
-/// seen but not driven. Shared by the question card and the clip card.
-struct LockedPeekOverlay: View {
-    var message = "Finish listening to this one first"
-
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-            VStack(spacing: 14) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 44))
-                Text(message)
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-            }
-            .foregroundStyle(.secondary)
-            .padding()
-        }
-        .contentShape(Rectangle())
     }
 }
