@@ -1,1 +1,13 @@
-{"created_at":"2026-07-15T16:56:36.557Z","updated_at":"2026-07-15T16:56:36.557Z","image_urls":["screenshot-669C4926-B64B-457E-9BB1-03AE722F8F99.jpg"],"description":"Voice note","test_instructions":[],"results":[],"id":"voice-d54683ba","platform":"ios"}
+{
+  "created_at": "2026-07-15T16:56:36.557Z",
+  "updated_at": "2026-07-15T16:59:45.000Z",
+  "image_urls": [
+    "screenshot-669C4926-B64B-457E-9BB1-03AE722F8F99.jpg"
+  ],
+  "description": "I can see the bottom of the progress bar of the previous item so add some more spacing between items so that when we're focused on a singular item we don't see the bottom of the progress bar up above it. I've attached a screen shot so you can see.",
+  "test_instructions": [],
+  "results": [],
+  "id": "voice-d54683ba",
+  "platform": "ios",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
