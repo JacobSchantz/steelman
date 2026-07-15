@@ -233,20 +233,36 @@ struct DiscoverView: View {
     }
 
     private var feed: some View {
-        ScrollView(.vertical) {
-            LazyVStack(spacing: 0) {
-                ForEach(scrollablePages) { page in
-                    pageView(page)
-                        .containerRelativeFrame([.horizontal, .vertical])
-                        .id(page.id)
+        // `.scrollPosition(id:)` reliably *reports* where the listener is, but writing to it
+        // is not a reliable way to *move* a `.viewAligned(.always)` feed on its own. Paging
+        // settles against a real drag, and a hands-free auto-advance — a card finishing with
+        // no finger on the screen — would update the bound id without the feed ever scrolling.
+        // So the binding stays for reading the listener's position, and every programmatic
+        // move is performed for real through the ScrollViewReader proxy below.
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                LazyVStack(spacing: 0) {
+                    ForEach(scrollablePages) { page in
+                        pageView(page)
+                            .containerRelativeFrame([.horizontal, .vertical])
+                            .id(page.id)
+                    }
                 }
+                .scrollTargetLayout()
             }
-            .scrollTargetLayout()
+            .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+            .scrollIndicators(.hidden)
+            .scrollPosition(id: $currentPageID, anchor: .top)
+            .overlay(alignment: .top) { lockMessage }
+            // Drive the actual scroll whenever the target page changes: the feed auto-advancing
+            // off a finished card, a bounce back from a locked peek, or a question handoff. When
+            // the change came from the listener's own swipe the target is already the settled
+            // page, so this is a no-op; when it came from code, this is what moves the feed.
+            .onChange(of: currentPageID) { _, target in
+                guard let target else { return }
+                withAnimation(.snappy) { proxy.scrollTo(target, anchor: .top) }
+            }
         }
-        .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-        .scrollIndicators(.hidden)
-        .scrollPosition(id: $currentPageID, anchor: .top)
-        .overlay(alignment: .top) { lockMessage }
     }
 
     @ViewBuilder
