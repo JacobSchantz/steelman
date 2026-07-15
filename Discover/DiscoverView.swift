@@ -3,19 +3,19 @@ import SwiftUI
 /// Discover — **one question at a time**.
 ///
 /// The feed opens on a question card that reads the question out loud, then scrolls
-/// through the alternating viewpoints on that question. Reach the end and it rolls
-/// straight into the next recommended question, starting with *its* question card. The
-/// toolbar names the question you're in and opens a picker to jump to another one.
+/// through the alternating viewpoints on that question. Reach the end and the feed
+/// *stops* — it no longer rolls into another question on its own. Moving to a new
+/// question is a deliberate act: the "Browse questions" button in the toolbar opens the
+/// picker to jump to another one.
 ///
 /// Product gates on the feed itself:
 /// - No skip-forward and no scrubbing at all — the bar is a playback indicator.
-/// - Hearing a page out carries you to the next one on its own (see `advanceToNextPage`),
-///   so the feed plays hands-free: put the phone down and it keeps arguing at you.
-/// - The next page can be peeked at by scrolling, but the feed bounces back with a lock
+/// - Hearing a page out carries you to the next one *within the same question* on its own
+///   (see `advanceToNextPage`), so a question plays hands-free: put the phone down and it
+///   keeps arguing that one question at you until its last viewpoint, then holds there.
+/// - A later page can be peeked at by scrolling, but the feed bounces back with a lock
 ///   message until the current page — question card or clip — has been heard to the end.
-///   The gate is per pass through a question (see `unlockedIndex`), so coming back around
-///   the loop to a question you've heard before makes you listen to it again rather than
-///   handing you a feed you can swipe straight through.
+///   The gate is per pass through a question (see `unlockedIndex`).
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
@@ -83,16 +83,14 @@ struct DiscoverView: View {
         return recommendedQuestions.first ?? questions.questions.first
     }
 
-    /// The feed for the current question: its question card, its clips, and — as the last
-    /// page — the *next* question's card. Scrolling onto that last page is what hands the
-    /// listener to the next question.
+    /// The feed for the current question: its question card followed by its clips. The feed
+    /// ends on the last clip — it no longer trails the next question's card, so there is
+    /// nothing to auto-advance or scroll into. A new question is reached only through the
+    /// "Browse questions" picker.
     private var pages: [DiscoverPage] {
         guard let currentQuestion else { return [] }
         var pages: [DiscoverPage] = [.question(currentQuestion)]
         pages += clips.map { .clip($0) }
-        if let next = nextQuestion {
-            pages.append(.question(next))
-        }
         return pages
     }
 
@@ -121,13 +119,6 @@ struct DiscoverView: View {
     private func hasBothSides(_ answers: [Answer]) -> Bool {
         let sides = Set(answers.compactMap(\.resolvedSide))
         return sides.count > 1
-    }
-
-    /// Where the listener goes when this question runs out: the best-ranked question they
-    /// haven't finished yet, or — once they've heard everything — back around the loop.
-    private var nextQuestion: Question? {
-        let others = recommendedQuestions.filter { $0.id != currentQuestion?.id }
-        return others.first { !completedQuestionIDs.contains($0.id) } ?? others.first
     }
 
     /// Highest index the listener may land on. Past that is locked until they listen.
@@ -409,19 +400,15 @@ struct DiscoverView: View {
 
     // MARK: - Moving between pages and questions
 
-    /// The listener scrolled somewhere. Either they've reached the next question's card
-    /// (hand them over), or they've jumped ahead of what they've earned (bounce them back).
+    /// The listener scrolled somewhere. If they've jumped ahead of what they've earned,
+    /// bounce them back. There is no longer a trailing next-question card to hand off to —
+    /// the feed ends on the current question's last clip, and new questions come from the
+    /// picker.
     private func handleLanding(on pageID: UUID?) {
         guard let pageID, let idx = pages.firstIndex(where: { $0.id == pageID }) else { return }
 
         if idx > maxAllowedIndex {
             bounceBackToCurrent()
-            return
-        }
-        // The only question card that isn't the one we're on is the trailing one — the
-        // next question. Landing on it is the handoff.
-        if case .question(let question) = pages[idx], question.id != currentQuestion?.id {
-            select(questionID: question.id, completingCurrent: true)
         }
     }
 
@@ -450,12 +437,12 @@ struct DiscoverView: View {
         }
     }
 
-    /// A page played out — roll straight onto the next one. Listening is the whole loop, so
-    /// hearing something to the end is the listener asking for what comes after it: the
-    /// question card hands you the first argument, an argument hands you the next one, and
-    /// the last argument of a question hands you the next question's card (where
-    /// `handleLanding` completes the handoff into that question). Scrolling still works; it
-    /// just isn't the only way forward anymore.
+    /// A page played out — roll straight onto the next one *within this question*: the
+    /// question card hands you the first argument, and an argument hands you the next one.
+    /// The last argument of a question is the end of the feed — it hands you nowhere, so the
+    /// feed holds there rather than rolling into a new question. Reaching a different question
+    /// is a deliberate act through the "Browse questions" picker. Scrolling still works; it
+    /// just isn't the only way forward within a question.
     ///
     /// Only the page the listener is *on* advances. A card that finishes behind them — one
     /// they scrolled back from, or that was still playing when they swiped away — must not
@@ -480,15 +467,13 @@ struct DiscoverView: View {
         selectedQuestionID = questionID
         // A question is always entered from the top: its card has to be read out before
         // anything behind it opens up, whether this is the first time through or the fifth.
-        // Coming back around the loop re-locks the feed — that is the point of the loop.
+        // Re-entering a question re-locks the feed so its card is heard again.
         unlockedIndex = 0
         rebuildClips()
-        // The question's card is page 0, and it carries the question's id — so when this
-        // came from scrolling onto the trailing card, the listener is already on it. But that
-        // makes the assignment a no-op, and the feed's change-driven scroll won't re-anchor
-        // after the deck rebuild above shifts the layout under the preserved scroll offset —
-        // leaving the viewport on the first answer. Bump the nonce to scroll back to the card
-        // for real, so the question is read before anything auto-advances off it.
+        // The question's card is page 0 and carries the question's id. The deck rebuild above
+        // can shift the layout under the preserved scroll offset, so bump the nonce to scroll
+        // back to the card for real — otherwise the viewport can drift onto the first answer
+        // before the question is read.
         currentPageID = questionID
         feedScrollNonce += 1
         persist()
