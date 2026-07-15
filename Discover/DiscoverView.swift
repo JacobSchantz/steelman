@@ -163,18 +163,14 @@ struct DiscoverView: View {
                     }
                     .accessibilityLabel("Settings")
                 }
-                // The dropdown next to the browse button: show or hide the question banner.
-                // A Menu renders as the little pull-down the report asked for, and the eye
-                // in the toolbar reflects the current state at a glance.
+                // One tap toggles the question banner — no menu to open first. The chevron
+                // points down while the question is showing (tap to collapse it away) and
+                // flips up once it's hidden (tap to bring it back).
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Toggle(isOn: $showQuestionHeader) {
-                            Label("Show question", systemImage: "text.alignleft")
-                        }
-                    } label: {
-                        Image(systemName: showQuestionHeader ? "eye" : "eye.slash")
+                    Button { showQuestionHeader.toggle() } label: {
+                        Image(systemName: showQuestionHeader ? "chevron.down" : "chevron.up")
                     }
-                    .accessibilityLabel("Show or hide the question")
+                    .accessibilityLabel(showQuestionHeader ? "Hide the question" : "Show the question")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { browsingQuestions = true } label: {
