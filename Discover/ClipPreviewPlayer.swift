@@ -143,44 +143,54 @@ final class ClipPreviewPlayer: ObservableObject {
             return
         }
 
-        // Nothing recorded → speak the text. If Kokoro already rendered this answer, it's an
-        // ordinary audio file and takes the path above, scrubber and all.
-        if let spoken = SpeechRenderer.cachedURL(for: item.text) {
-            startRenderedSpeech(at: spoken, key: item.dedupeKey, estimated: item.duration)
-            return
-        }
+        // Nothing recorded → speak the text. Which engine does so is the listener's choice:
+        // the neural Kokoro voice, or Apple's system voice with no download. When they've
+        // picked the system voice we skip Kokoro entirely — even a cached render — so the
+        // setting is honoured, not quietly overridden by whatever's already on disk.
+        let speaker = SpeechSettings.shared.voice.id
+        let useKokoro = SpeechSettings.shared.engine == .kokoro
 
-        // Kokoro can't speak yet (weights still downloading, or the backend isn't linked):
-        // fall back rather than leave the feed silent.
-        guard SpeechRenderer.isAvailable else {
-            isTTS = true
-            startTTS(fullText: item.text, from: 0, estimatedTotal: max(item.duration, 8))
-            return
-        }
+        if useKokoro {
+            // If Kokoro already rendered this answer in this voice, it's an ordinary audio
+            // file and takes the recorded-audio path above, scrubber and all.
+            if let spoken = SpeechRenderer.cachedURL(for: item.text, speaker: speaker) {
+                startRenderedSpeech(at: spoken, key: item.dedupeKey, estimated: item.duration)
+                return
+            }
 
-        // Synthesize it, then play it as audio. `DiscoverView` renders the next few cards
-        // ahead of time, so in a moving feed this branch is mostly the very first card.
-        isTTS = false
-        ttsFullText = ""
-        duration = max(item.duration, 1)
-        isPreparing = true
-        syncPlaybackStateFromEngine()
+            // Kokoro's ready and chosen: synthesize, then play it as audio. `DiscoverView`
+            // renders the next few cards ahead, so in a moving feed this is mostly the first.
+            if SpeechRenderer.isAvailable {
+                isTTS = false
+                ttsFullText = ""
+                duration = max(item.duration, 1)
+                isPreparing = true
+                syncPlaybackStateFromEngine()
 
-        let key = item.dedupeKey
-        let text = item.text
-        let estimated = item.duration
-        renderTask = Task { [weak self] in
-            let rendered = await SpeechRenderer.shared.render(text)
-            guard let self, !Task.isCancelled, self.activeKey == key else { return }
-            self.isPreparing = false
-            if let rendered {
-                self.startRenderedSpeech(at: rendered, key: key, estimated: estimated)
-            } else {
-                // Synthesis failed — speak it rather than drop the card.
-                self.isTTS = true
-                self.startTTS(fullText: text, from: 0, estimatedTotal: max(estimated, 8))
+                let key = item.dedupeKey
+                let text = item.text
+                let estimated = item.duration
+                renderTask = Task { [weak self] in
+                    let rendered = await SpeechRenderer.shared.render(text, speaker: speaker)
+                    guard let self, !Task.isCancelled, self.activeKey == key else { return }
+                    self.isPreparing = false
+                    if let rendered {
+                        self.startRenderedSpeech(at: rendered, key: key, estimated: estimated)
+                    } else {
+                        // Synthesis failed — speak it rather than drop the card.
+                        self.isTTS = true
+                        self.startTTS(fullText: text, from: 0, estimatedTotal: max(estimated, 8))
+                    }
+                }
+                return
             }
         }
+
+        // System voice, or Kokoro chosen but not ready yet (weights still downloading, or
+        // the backend isn't linked): speak it with AVSpeechSynthesizer rather than leave the
+        // feed silent.
+        isTTS = true
+        startTTS(fullText: item.text, from: 0, estimatedTotal: max(item.duration, 8))
     }
 
     /// Play a Kokoro-rendered WAV. `startTime` is deliberately 0: the render is the whole
@@ -553,7 +563,7 @@ final class ClipPreviewPlayer: ObservableObject {
                 teardownObserver()
                 teardownEndObserver()
                 player = nil
-                SpeechRenderer.discardRender(for: current.text)
+                SpeechRenderer.discardRender(for: current.text, speaker: SpeechSettings.shared.voice.id)
                 isTTS = true
                 startTTS(fullText: current.text, from: 0, estimatedTotal: max(current.duration, 8))
             } else {

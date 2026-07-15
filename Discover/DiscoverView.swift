@@ -155,16 +155,18 @@ struct DiscoverView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Settings on the left, the question controls on the right — the reporter
+                // wanted the gear to lead and the question icon to sit opposite it.
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { browsingQuestions = true } label: {
-                        Image(systemName: "text.bubble.fill")
+                    Button { showingSettings = true } label: {
+                        Image(systemName: "gearshape")
                     }
-                    .accessibilityLabel("Browse questions")
+                    .accessibilityLabel("Settings")
                 }
                 // The dropdown next to the browse button: show or hide the question banner.
                 // A Menu renders as the little pull-down the report asked for, and the eye
                 // in the toolbar reflects the current state at a glance.
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Toggle(isOn: $showQuestionHeader) {
                             Label("Show question", systemImage: "text.alignleft")
@@ -175,10 +177,10 @@ struct DiscoverView: View {
                     .accessibilityLabel("Show or hide the question")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingSettings = true } label: {
-                        Image(systemName: "gearshape")
+                    Button { browsingQuestions = true } label: {
+                        Image(systemName: "text.bubble.fill")
                     }
-                    .accessibilityLabel("Settings")
+                    .accessibilityLabel("Browse questions")
                 }
             }
             // A page you go to, not a sheet that covers the feed: browsing the library is a
@@ -202,11 +204,17 @@ struct DiscoverView: View {
                 if !didInitialLoad {
                     didInitialLoad = true
                     restore()
-                    // Pull the Kokoro weights in the background. Until they land, answers are
-                    // read by AVSpeechSynthesizer, so the feed works from the first launch —
-                    // it just gets a better voice partway through.
-                    speech.ensureDownloaded()
+                    // Pull the Kokoro weights in the background — unless the listener opted
+                    // out by choosing the system voice, in which case we don't spend their
+                    // bandwidth. Until the weights land, answers are read by
+                    // AVSpeechSynthesizer, so the feed works from the first launch; it just
+                    // gets a better voice partway through.
+                    if speechSettings.engine == .kokoro { speech.ensureDownloaded() }
                 }
+            }
+            // Switching to the neural voice starts its download if it isn't already here.
+            .onChange(of: speechSettings.engine) { _, engine in
+                if engine == .kokoro { speech.ensureDownloaded() }
             }
             .onChange(of: answers.answers) { _, _ in rebuildClips() }
             .onChange(of: questions.questions) { _, _ in rebuildClips() }
@@ -541,7 +549,10 @@ struct DiscoverView: View {
     /// starts instantly. Only the very first card of a session can outrun it. Renders are
     /// cached and de-duplicated inside `SpeechRenderer`, so re-issuing these is cheap.
     private func renderSpeechAhead(_ upcoming: [ArgumentClip]) {
-        guard SpeechRenderer.isAvailable else { return }
+        // Only prefetch when Kokoro is both chosen and ready — no point synthesizing ahead
+        // for cards the system voice will read live.
+        guard speechSettings.engine == .kokoro, SpeechRenderer.isAvailable else { return }
+        let speaker = speechSettings.voice.id
         let pending = upcoming
             .filter { $0.audioURL == nil }
             .prefix(speechRenderAheadCount)
@@ -549,7 +560,7 @@ struct DiscoverView: View {
         guard !pending.isEmpty else { return }
         Task.detached(priority: .utility) {
             for text in pending {
-                _ = await SpeechRenderer.shared.render(text)
+                _ = await SpeechRenderer.shared.render(text, speaker: speaker)
             }
         }
     }

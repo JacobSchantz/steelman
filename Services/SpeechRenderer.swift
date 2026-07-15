@@ -18,9 +18,10 @@ import CryptoKit
 actor SpeechRenderer {
     static let shared = SpeechRenderer()
 
-    /// Kokoro speaker 5 is "Adam" — a US male voice. Kept as a constant rather than a
-    /// setting because there's no voice picker in Steelman yet.
-    private static let speakerID: Int32 = 5
+    /// Speed is fixed at render time — playback speed is applied later by `AVPlayer.rate`,
+    /// so the *cached* WAV is always the natural-pace one and a speed change never re-renders.
+    /// The speaker, by contrast, is chosen by the listener (`SpeechSettings.voiceID`) and
+    /// threaded in per call so each voice caches to its own file.
     private static let speed: Float = 1.0
 
     private let engine = KokoroEngine()
@@ -46,47 +47,49 @@ actor SpeechRenderer {
     }
 
     /// Same text + same voice + same speed always maps to the same file, so a re-listen or
-    /// a deck rebuild reuses what we already synthesized.
-    private static func cacheKey(for text: String) -> String {
+    /// a deck rebuild reuses what we already synthesized. The speaker is in the seed, so
+    /// switching voices never collides with — or overwrites — another voice's renders.
+    private static func cacheKey(for text: String, speaker: Int32) -> String {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let seed = "\(speakerID)|\(speed)|\(normalized)"
+        let seed = "\(speaker)|\(speed)|\(normalized)"
         let digest = SHA256.hash(data: Data(seed.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    /// The rendered file for `text`, or nil if it hasn't been synthesized yet. Cheap and
-    /// synchronous — `ClipPreviewPlayer` calls it on the main thread to decide, without
-    /// awaiting anything, whether it can go straight down the audio path.
-    nonisolated static func cachedURL(for text: String) -> URL? {
-        let url = cacheDirectory.appendingPathComponent("\(cacheKey(for: text)).wav")
+    /// The rendered file for `text` in `speaker`'s voice, or nil if it hasn't been
+    /// synthesized yet. Cheap and synchronous — `ClipPreviewPlayer` calls it on the main
+    /// thread to decide, without awaiting anything, whether it can go straight down the
+    /// audio path.
+    nonisolated static func cachedURL(for text: String, speaker: Int32) -> URL? {
+        let url = cacheDirectory.appendingPathComponent("\(cacheKey(for: text, speaker: speaker)).wav")
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
     /// Throw away a rendered file that turned out to be unplayable, so the next request
     /// synthesizes it again instead of handing AVPlayer the same broken WAV forever.
-    nonisolated static func discardRender(for text: String) {
-        guard let url = cachedURL(for: text) else { return }
+    nonisolated static func discardRender(for text: String, speaker: Int32) {
+        guard let url = cachedURL(for: text, speaker: speaker) else { return }
         try? FileManager.default.removeItem(at: url)
     }
 
     // MARK: - Rendering
 
-    /// Synthesize `text` to a cached WAV and return it, or nil if Kokoro can't speak it.
-    /// Never throws: every failure path (backend missing, weights absent, synthesis error)
-    /// returns nil so the caller can fall back to AVSpeechSynthesizer.
-    func render(_ text: String) async -> URL? {
+    /// Synthesize `text` in `speaker`'s voice to a cached WAV and return it, or nil if
+    /// Kokoro can't speak it. Never throws: every failure path (backend missing, weights
+    /// absent, synthesis error) returns nil so the caller can fall back to AVSpeechSynthesizer.
+    func render(_ text: String, speaker: Int32) async -> URL? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
-        if let existing = Self.cachedURL(for: trimmed) { return existing }
+        if let existing = Self.cachedURL(for: trimmed, speaker: speaker) { return existing }
         guard Self.isAvailable else { return nil }
 
-        let key = Self.cacheKey(for: trimmed)
+        let key = Self.cacheKey(for: trimmed, speaker: speaker)
         if let running = inFlight[key] { return await running.value }
 
         let task = Task<URL?, Never> { [engine] in
             guard let pcm = await engine.synthesize(trimmed,
-                                                    speaker: Self.speakerID,
+                                                    speaker: speaker,
                                                     speed: Self.speed) else { return nil }
             let url = Self.cacheDirectory.appendingPathComponent("\(key).wav")
             // Write to a sibling temp file and move it into place, so a cancelled or

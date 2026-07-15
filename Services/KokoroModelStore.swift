@@ -40,6 +40,15 @@ enum KokoroModel {
     static var modelPath: String { directory.appendingPathComponent("model.onnx").path }
     static var voicesPath: String { directory.appendingPathComponent("voices.bin").path }
 
+    /// Combined on-disk size of every weight — what the settings screen shows next to the
+    /// model so the listener knows the cost before they commit to the download.
+    static var totalBytes: Int64 { weights.reduce(0) { $0 + $1.bytes } }
+
+    /// "351 MB" — the download size, formatted for the settings row.
+    static var displaySize: String {
+        ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
+    }
+
     /// Both weights present at exactly the expected size. This is a size check, not a
     /// re-hash: the SHA-256 was verified at download time, and re-hashing 345 MB on every
     /// launch would stall the feed for seconds.
