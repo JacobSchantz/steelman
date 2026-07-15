@@ -53,6 +53,14 @@ struct DiscoverView: View {
     @State private var showingSettings = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
+    /// The pending hands-free roll onto the next page. A card reports "finished" a beat
+    /// before its last syllable has fully played out — most audibly with the system TTS
+    /// voice, whose `didFinish` lands slightly ahead of the final sample — so advancing the
+    /// instant that fires scrolls to the next card and starts its audio over the tail of the
+    /// one you were listening to. This task holds the advance back by `advanceDelayAfterFinish`
+    /// so the last word finishes in the clear. It's cancelled if the listener moves first or
+    /// another card finishes, so the delay never stacks up or fires onto a stale page.
+    @State private var advanceTask: Task<Void, Never>?
     /// Bumped to re-drive the feed's scroll to `currentPageID` when the *value* didn't change
     /// but the layout under it did — see the question handoff in `select`.
     @State private var feedScrollNonce = 0
@@ -63,6 +71,9 @@ struct DiscoverView: View {
     /// How far ahead to synthesize speech. Lower than `clipDownloadCount` because a render
     /// costs CPU, not just bandwidth, and three cards is more than a listener can outrun.
     private let speechRenderAheadCount = 3
+    /// How long to let a finished card breathe before rolling onto the next one, so the last
+    /// syllable plays out fully instead of being cut off by the next card starting.
+    private let advanceDelayAfterFinish: Duration = .seconds(1)
 
     // MARK: - Pages
 
@@ -217,15 +228,20 @@ struct DiscoverView: View {
             .onChange(of: player.finishedItemID) { _, finished in
                 guard let finished else { return }
                 // Unlock first: the page we're about to move onto has to be earned before
-                // landing on it, or `handleLanding` would bounce us straight back off it.
+                // landing on it, or `handleLanding` would bounce us straight back off it. The
+                // unlock is immediate — it only grants the option to scroll ahead — while the
+                // automatic advance waits a beat so the last syllable finishes in the clear.
                 unlockNextPage(afterHearing: finished)
-                advanceToNextPage(afterHearing: finished)
+                scheduleAdvance(afterHearing: finished)
             }
             .onChange(of: currentPageID) { _, newID in handleLanding(on: newID) }
             // A speed change made mid-card should be heard now, not on the next one. New
             // cards read the setting on their own when they start playing.
             .onChange(of: speechSettings.speed) { _, _ in player.updatePlaybackSpeed() }
-            .onDisappear { lockMessageTask?.cancel() }
+            .onDisappear {
+                lockMessageTask?.cancel()
+                advanceTask?.cancel()
+            }
         }
     }
 
@@ -380,6 +396,20 @@ struct DiscoverView: View {
               unlockedIndex < pages.count - 1 else { return }
         unlockedIndex = maxAllowedIndex + 1
         persist()
+    }
+
+    /// Hold the hands-free advance back for a beat after a card reports finished, so its last
+    /// syllable plays out before the next card starts. Cancels any advance already pending —
+    /// a fresh finish or the listener moving supersedes it — so the delay never stacks and
+    /// never fires onto a page the listener has since left (`advanceToNextPage` also re-checks
+    /// they're still on `pageID`, so a manual scroll during the pause quietly wins).
+    private func scheduleAdvance(afterHearing pageID: UUID) {
+        advanceTask?.cancel()
+        advanceTask = Task {
+            try? await Task.sleep(for: advanceDelayAfterFinish)
+            guard !Task.isCancelled else { return }
+            advanceToNextPage(afterHearing: pageID)
+        }
     }
 
     /// A page played out — roll straight onto the next one. Listening is the whole loop, so
