@@ -1,1 +1,11 @@
-{"results":[],"image_urls":[],"test_instructions":[],"platform":"ios","id":"voice-977ca581","description":"Voice note","updated_at":"2026-07-15T16:12:13.288Z","created_at":"2026-07-15T16:12:13.288Z"}
+{
+  "results": [],
+  "image_urls": [],
+  "test_instructions": [],
+  "platform": "ios",
+  "id": "voice-977ca581",
+  "description": "We should have a final screen that's end of answers, and then it should have a button that says, that opens the question sheet, or actually it should just take us to a random question, a random next question.",
+  "updated_at": "2026-07-15T16:15:08.000Z",
+  "created_at": "2026-07-15T16:12:13.288Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
