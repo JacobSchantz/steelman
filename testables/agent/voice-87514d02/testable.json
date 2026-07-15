@@ -1,1 +1,11 @@
-{"description":"Voice note","test_instructions":[],"platform":"ios","image_urls":[],"created_at":"2026-07-15T23:04:12.257Z","results":[],"updated_at":"2026-07-15T23:04:12.257Z","id":"voice-87514d02"}
+{
+  "description": "Okay, I think I figured out the features that I like. So instead of not being able to scroll, on a particular question you can scroll as long as it's something that's aligned on that particular side. So you can you can scroll and you can skip a particular item as long as it's on the same side of a given argument. But if you listen to the whole thing the whole one minute or however long an item is let's say if you listen to at least one minute of a particular side, then, and sorry, it has to be not just one minute of collected arguments, but you have to listen to one entire side that totals at least one minute. and then then you're automatically assigned to the next side. So basically it locks you to a particular side until you've listened to a good argument that's at least one minute long from a particular side. and actually now that I say this let's make it 30 seconds instead of one minute so 30 seconds is the minimum for any uh particular piece of content to be",
+  "test_instructions": [],
+  "platform": "ios",
+  "image_urls": [],
+  "created_at": "2026-07-15T23:04:12.257Z",
+  "results": [],
+  "updated_at": "2026-07-15T23:04:47.000Z",
+  "id": "voice-87514d02",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
