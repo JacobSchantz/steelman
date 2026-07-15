@@ -5,7 +5,8 @@
   "image_urls": [],
   "created_at": "2026-07-15T23:04:12.257Z",
   "results": [],
-  "updated_at": "2026-07-15T23:04:47.000Z",
+  "updated_at": "2026-07-15T23:05:54Z",
   "id": "voice-87514d02",
-  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+  "transcription_model": "mlx-community/whisper-large-v3-mlx",
+  "working_on": "workspace:268"
 }
