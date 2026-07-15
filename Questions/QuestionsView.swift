@@ -150,51 +150,57 @@ struct AnswerRow: View {
 struct NewQuestionSheet: View {
     @ObservedObject var store: QuestionStore
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var dictation = OnDeviceSpeechTranscriber()
 
     @State private var prompt = ""
-    @State private var sideA = ""
-    @State private var sideB = ""
-    @State private var detail = ""
-    @State private var category = ""
+
+    private var trimmedPrompt: String {
+        prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
+                // A new question is now just the prompt itself — no sides, context, or
+                // category to fill in. Type it, or speak it with the audio field below.
                 Section("Question") {
                     TextField("What are we steelmanning?", text: $prompt, axis: .vertical)
                         .lineLimit(3...8)
-                    TextField("Optional context", text: $detail, axis: .vertical)
-                        .lineLimit(2...5)
+                        .disabled(dictation.isListening)
                 }
-                Section("Sides") {
-                    TextField("Side A label", text: $sideA)
-                    TextField("Side B label", text: $sideB)
-                }
+
                 Section {
-                    TextField("Category (optional)", text: $category)
-                        .textInputAutocapitalization(.words)
-                    // Free text, but the categories already in use are one tap away — that's
-                    // what keeps "Work" and "work" and "Working" from becoming three
-                    // categories in the browse page's filter row.
-                    if !store.categories.isEmpty {
-                        ScrollView(.horizontal) {
-                            HStack(spacing: 8) {
-                                ForEach(store.categories, id: \.self) { existing in
-                                    Button(existing) { category = existing }
-                                        .font(.caption.weight(.semibold))
-                                        .buttonStyle(.bordered)
-                                        .buttonBorderShape(.capsule)
-                                        .tint(SteelmanTheme.color(forCategory: existing))
-                                }
-                            }
-                            .padding(.vertical, 2)
+                    if dictation.isListening {
+                        Button(role: .destructive) {
+                            stopDictation()
+                        } label: {
+                            Label("Stop recording", systemImage: "stop.circle.fill")
                         }
-                        .scrollIndicators(.hidden)
+                        Text("Listening… \(Int(dictation.seconds))s · on-device")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !dictation.partialTranscript.isEmpty {
+                            Text(dictation.partialTranscript)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Button {
+                            Task { await startDictation() }
+                        } label: {
+                            Label(
+                                trimmedPrompt.isEmpty ? "Record question" : "Record more",
+                                systemImage: "waveform.badge.mic"
+                            )
+                        }
+                    }
+                    if let err = dictation.errorMessage {
+                        Text(err).font(.caption).foregroundStyle(.red)
                     }
                 } header: {
-                    Text("Category")
+                    Text("Audio")
                 } footer: {
-                    Text("Groups the question in the browse page, where you can filter by it.")
+                    Text("Speak your question — on-device speech recognition fills the box above.")
                 }
             }
             .navigationTitle("New question")
@@ -205,23 +211,36 @@ struct NewQuestionSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
-                        store.add(Question(
-                            prompt: prompt.trimmingCharacters(in: .whitespacesAndNewlines),
-                            sideALabel: sideA.trimmingCharacters(in: .whitespacesAndNewlines),
-                            sideBLabel: sideB.trimmingCharacters(in: .whitespacesAndNewlines),
-                            detail: detail.trimmingCharacters(in: .whitespacesAndNewlines),
-                            category: trimmedCategory.isEmpty ? nil : trimmedCategory
-                        ))
+                        if dictation.isListening { stopDictation() }
+                        store.add(Question(prompt: trimmedPrompt))
                         dismiss()
                     }
-                    .disabled(
-                        prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            || sideA.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            || sideB.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    )
+                    .disabled(dictation.isListening || trimmedPrompt.isEmpty)
                 }
             }
+            .onChange(of: dictation.partialTranscript) { _, _ in
+                guard dictation.isListening else { return }
+                prompt = dictation.liveText
+            }
+            .onChange(of: dictation.finalTranscript) { _, _ in
+                guard !dictation.isListening else { return }
+                let live = dictation.liveText
+                if !live.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    prompt = live
+                }
+            }
+        }
+    }
+
+    private func startDictation() async {
+        await dictation.start(prefixExistingText: prompt)
+    }
+
+    private func stopDictation() {
+        dictation.stop()
+        let live = dictation.liveText
+        if !live.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            prompt = live
         }
     }
 }

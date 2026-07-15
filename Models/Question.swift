@@ -17,8 +17,12 @@ struct Question: Identifiable, Codable, Hashable {
     init(
         id: UUID = UUID(),
         prompt: String,
-        sideALabel: String,
-        sideBLabel: String,
+        // Sides used to be filled in on the new-question form, but that form is now just a
+        // prompt + audio field, so these default to the neutral "Side A" / "Side B" the rest
+        // of the app (Discover, Submit, the browse chips) still reads. Callers that do care
+        // about labeled sides can pass them explicitly.
+        sideALabel: String = "Side A",
+        sideBLabel: String = "Side B",
         detail: String = "",
         category: String? = nil,
         createdAt: Date = Date()
