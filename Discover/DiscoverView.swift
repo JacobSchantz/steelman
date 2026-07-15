@@ -369,7 +369,15 @@ struct DiscoverView: View {
         // move is performed for real through the ScrollViewReader proxy below.
         ScrollViewReader { proxy in
             ScrollView(.vertical) {
-                LazyVStack(spacing: 0) {
+                // A gutter between pages. Each page is a full-height video card whose playback
+                // bar sits near its bottom edge, and the settled card lands a touch below the
+                // very top of the feed — so with the pages flush (spacing 0) the tail of the
+                // card above pokes into that gap and you read the previous item's progress bar
+                // hanging over the top of the one you're on. The gutter is scrolled off-screen
+                // above the settled card, so it costs nothing when you're on a card; it just
+                // pushes the previous card up far enough that its bar clears the fold, leaving
+                // clean background there instead.
+                LazyVStack(spacing: 72) {
                     ForEach(scrollablePages) { page in
                         pageView(page)
                             .containerRelativeFrame([.horizontal, .vertical])
