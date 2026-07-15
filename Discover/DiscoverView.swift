@@ -50,6 +50,7 @@ struct DiscoverView: View {
     @State private var downloadingClips: Set<UUID> = []
     @State private var didInitialLoad = false
     @State private var browsingQuestions = false
+    @State private var composingAnswer = false
     @State private var showingSettings = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
@@ -200,6 +201,19 @@ struct DiscoverView: View {
                     }
                     .accessibilityLabel("Browse questions")
                 }
+                // Draft an answer to the question you're currently listening to, without
+                // leaving the feed. Pause first so you're not writing over the top of an
+                // argument playing behind the sheet.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        if player.isPlaying { player.togglePlayPause() }
+                        composingAnswer = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .accessibilityLabel("Answer this question")
+                    .disabled(currentQuestion == nil)
+                }
             }
             // A page you go to, not a sheet that covers the feed: browsing the library is a
             // place of its own, with room for a search field, the categories, and enough of
@@ -216,6 +230,17 @@ struct DiscoverView: View {
             // keeping it off the navigation stack leaves the feed's own state untouched.
             .sheet(isPresented: $showingSettings) {
                 SettingsView(settings: speechSettings)
+            }
+            // The answer composer, opened on whatever question you're currently in. Saving an
+            // answer dismisses it and drops you back on the feed; the new answer flows into the
+            // deck through the `answers.answers` change handler that rebuilds the clips.
+            .sheet(isPresented: $composingAnswer) {
+                SubmitAnswerView(
+                    questions: questions,
+                    answers: answers,
+                    initialQuestionID: currentQuestion?.id,
+                    onSaved: { composingAnswer = false }
+                )
             }
             .task(id: currentPageID) { await prepareAndPlayCurrent() }
             .onAppear {

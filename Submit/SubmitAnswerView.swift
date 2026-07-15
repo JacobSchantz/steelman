@@ -4,6 +4,13 @@ import AVFoundation
 struct SubmitAnswerView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
+    /// The question to open on. Discover passes the one you're currently listening to so the
+    /// composer lands on it instead of defaulting to the top of the list; nil keeps the old
+    /// "first question" behaviour for any other caller.
+    var initialQuestionID: UUID? = nil
+    /// Called after a successful save so the presenter can dismiss the composer.
+    var onSaved: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var analysisService = AnswerAnalysisService()
     @StateObject private var dictation = OnDeviceSpeechTranscriber()
 
@@ -164,9 +171,14 @@ struct SubmitAnswerView: View {
                 }
                 .presentationDetents([.medium])
             }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
             .onAppear {
                 if selectedQuestionId == nil {
-                    selectedQuestionId = questions.questions.first?.id
+                    selectedQuestionId = initialQuestionID ?? questions.questions.first?.id
                 }
             }
             .onChange(of: dictation.partialTranscript) { _, _ in
@@ -233,5 +245,8 @@ struct SubmitAnswerView: View {
         statusIsError = false
         statusMessage = "Saved · lean \(question.label(for: analysis.leanSide)) (\(Int(analysis.leanConfidence * 100))%)"
             + (analysis.containsProfanity ? " · profanity flagged" : "")
+        // Opened from Discover: hand control back to the feed now that the answer is in the
+        // deck. A standalone presentation (onSaved == nil) stays open so you can add another.
+        onSaved?()
     }
 }
