@@ -47,6 +47,9 @@ struct DiscoverView: View {
     @State private var showingSettings = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
+    /// Bumped to re-drive the feed's scroll to `currentPageID` when the *value* didn't change
+    /// but the layout under it did — see the question handoff in `select`.
+    @State private var feedScrollNonce = 0
 
     private let deckCache = ArgumentDeckCache.shared
     private let clipDownloadCount = 10
@@ -262,6 +265,15 @@ struct DiscoverView: View {
                 guard let target else { return }
                 withAnimation(.snappy) { proxy.scrollTo(target, anchor: .top) }
             }
+            // A question handoff sets `currentPageID` to the value it already holds (the
+            // trailing next-question card and the incoming question's page 0 share an id), so
+            // the change-driven scroll above never fires — yet the feed content was rebuilt
+            // under the same scroll offset, drifting the viewport onto the first answer. This
+            // re-anchors to the question card for real after that rebuild.
+            .onChange(of: feedScrollNonce) { _, _ in
+                guard let target = currentPageID else { return }
+                withAnimation(.snappy) { proxy.scrollTo(target, anchor: .top) }
+            }
         }
     }
 
@@ -379,8 +391,13 @@ struct DiscoverView: View {
         unlockedIndex = 0
         rebuildClips()
         // The question's card is page 0, and it carries the question's id — so when this
-        // came from scrolling onto the trailing card, the listener is already on it.
+        // came from scrolling onto the trailing card, the listener is already on it. But that
+        // makes the assignment a no-op, and the feed's change-driven scroll won't re-anchor
+        // after the deck rebuild above shifts the layout under the preserved scroll offset —
+        // leaving the viewport on the first answer. Bump the nonce to scroll back to the card
+        // for real, so the question is read before anything auto-advances off it.
         currentPageID = questionID
+        feedScrollNonce += 1
         persist()
     }
 
