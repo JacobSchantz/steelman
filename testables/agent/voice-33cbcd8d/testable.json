@@ -6,6 +6,7 @@
   "platform": "ios",
   "id": "voice-33cbcd8d",
   "results": [],
-  "updated_at": "2026-07-15T14:25:19.000Z",
-  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+  "updated_at": "2026-07-15T14:26:27Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx",
+  "working_on": "workspace:223"
 }
