@@ -1,1 +1,11 @@
-{"image_urls":[],"updated_at":"2026-07-15T12:10:23.344Z","test_instructions":[],"description":"Voice note","created_at":"2026-07-15T12:10:23.344Z","id":"voice-52fdef16","platform":"ios","results":[]}
+{
+  "image_urls": [],
+  "updated_at": "2026-07-15T12:12:09.000Z",
+  "test_instructions": [],
+  "description": "We should have the option to show or hide the question. So add maybe a little drop down next to the question icon up top. It allows us to show or hide the question. Also, when we show a new question, it doesn't need to say question up above. In fact, I don't think we need the two answers either. I think we can simplify that as well.",
+  "created_at": "2026-07-15T12:10:23.344Z",
+  "id": "voice-52fdef16",
+  "platform": "ios",
+  "results": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
