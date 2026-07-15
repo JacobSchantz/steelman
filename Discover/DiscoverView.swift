@@ -155,13 +155,22 @@ struct DiscoverView: View {
                 if pages.isEmpty {
                     emptyState
                 } else {
-                    VStack(spacing: 0) {
-                        if showQuestionHeader {
-                            questionHeader
+                    // The feed is a full-bleed stack of video pages, so the question banner
+                    // and the download note float *over* it rather than sitting above it in a
+                    // VStack. When they were siblings, toggling the banner (or moving to a
+                    // taller/shorter question) resized the ScrollView and shoved every video
+                    // page down or up. As an overlay they expand and contract in place and the
+                    // feed underneath never moves.
+                    feed
+                        .overlay(alignment: .top) {
+                            VStack(spacing: 0) {
+                                if showQuestionHeader {
+                                    questionHeader
+                                }
+                                voiceDownloadNote
+                            }
+                            .background(.ultraThinMaterial)
                         }
-                        voiceDownloadNote
-                        feed
-                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -178,7 +187,9 @@ struct DiscoverView: View {
                 // points down while the question is showing (tap to collapse it away) and
                 // flips up once it's hidden (tap to bring it back).
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showQuestionHeader.toggle() } label: {
+                    Button {
+                        withAnimation(.snappy) { showQuestionHeader.toggle() }
+                    } label: {
                         Image(systemName: showQuestionHeader ? "chevron.down" : "chevron.up")
                     }
                     .accessibilityLabel(showQuestionHeader ? "Hide the question" : "Show the question")
@@ -245,9 +256,12 @@ struct DiscoverView: View {
         }
     }
 
-    /// The question being argued, under the toolbar rather than in it. In the toolbar it
-    /// was squeezed into the inline title slot — one truncated line, crowded against the
-    /// status bar. Here it has the room to be read in full before you hear anyone argue it.
+    /// The question being argued, floating over the top of the feed rather than stacked
+    /// above it. It reads in full before you hear anyone argue it, and because it's an overlay
+    /// the video underneath keeps the whole screen — toggling the banner or landing on a
+    /// question of a different length expands or contracts this in place without pushing the
+    /// feed down. It sits on `.ultraThinMaterial` (from the overlay stack) so the type stays
+    /// legible over whatever frame is playing behind it.
     private var questionHeader: some View {
         Text(currentQuestion?.prompt ?? "")
             .font(.headline)
@@ -257,6 +271,7 @@ struct DiscoverView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 18)
+            .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     /// While the Kokoro weights come down, answers are read by the old system voice. Say so,
