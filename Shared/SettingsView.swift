@@ -13,6 +13,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: SpeechSettings
     @ObservedObject private var models = KokoroModelStore.shared
+    @StateObject private var preview = VoicePreviewPlayer()
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -32,6 +33,10 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            // Stop auditioning when the sheet closes or the voice list is hidden, so a sample
+            // never keeps playing over the feed after you leave.
+            .onDisappear { preview.stop() }
+            .onChange(of: settings.engine) { _, _ in preview.stop() }
         }
     }
 
@@ -52,25 +57,77 @@ struct SettingsView: View {
         }
     }
 
+    /// An inline, tappable list rather than a `navigationLink` picker: the point is to
+    /// *hear* a voice before choosing it, and a push-then-pop picker makes auditioning
+    /// several voices tedious. Here each tap both selects the voice and plays a short sample
+    /// in it, so flicking down the list is exactly the "preview before deciding" flow the
+    /// request asks for.
     private var voiceSection: some View {
         Section {
-            Picker("Voice", selection: $settings.voiceID) {
-                ForEach(SpeechSettings.voices) { voice in
-                    VStack(alignment: .leading) {
-                        Text(voice.name)
-                        Text(voice.detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .tag(voice.id)
-                }
+            ForEach(SpeechSettings.voices) { voice in
+                voiceRow(voice)
             }
-            .pickerStyle(.navigationLink)
         } header: {
             Text("Voice")
         } footer: {
-            Text("The speaker Kokoro uses. Changing it takes effect on the next card.")
+            Text(voiceFooter)
         }
+    }
+
+    private func voiceRow(_ voice: KokoroVoice) -> some View {
+        Button {
+            settings.voiceID = voice.id
+            preview.preview(voice)
+        } label: {
+            HStack(spacing: 12) {
+                voicePreviewIcon(for: voice)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(voice.name)
+                        .foregroundStyle(.primary)
+                    Text(voice.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if settings.voiceID == voice.id {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.tint)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Leading affordance: a speaker glyph you can tap to hear the voice, a filled/animated
+    /// one while it's sounding, and a spinner while Kokoro is still rendering the sample.
+    @ViewBuilder
+    private func voicePreviewIcon(for voice: KokoroVoice) -> some View {
+        Group {
+            if preview.preparingVoiceID == voice.id {
+                ProgressView()
+                    .controlSize(.small)
+            } else if preview.playingVoiceID == voice.id {
+                Image(systemName: "speaker.wave.2.fill")
+                    .foregroundStyle(.tint)
+                    .symbolEffect(.variableColor.iterative, options: .repeating)
+            } else {
+                Image(systemName: "speaker.wave.2")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 24)
+    }
+
+    private var voiceFooter: String {
+        let base = "Tap a voice to hear a sample. Changing it takes effect on the next card."
+        guard VoicePreviewPlayer.canPreviewDistinctVoices else {
+            return "Tap a voice to hear a sample. Until the voice model finishes downloading, "
+                + "samples use the system voice and sound the same. Changing the voice takes "
+                + "effect on the next card."
+        }
+        return base
     }
 
     private var speedSection: some View {
