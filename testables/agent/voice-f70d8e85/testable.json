@@ -1,1 +1,11 @@
-{"platform":"ios","id":"voice-f70d8e85","results":[],"created_at":"2026-07-15T16:13:05.199Z","image_urls":[],"description":"Voice note","test_instructions":[],"updated_at":"2026-07-15T16:13:05.199Z"}
+{
+  "platform": "ios",
+  "id": "voice-f70d8e85",
+  "results": [],
+  "created_at": "2026-07-15T16:13:05.199Z",
+  "image_urls": [],
+  "description": "Simplify the user setup. We don't need to be able to select between multiple users. There's only one user signed in per at a time. So any answer would obviously be from that one user. So you can remove that field entirely. And then on the account page, remove the option to select between different users. There's just the one user. There's just our user and then there's going to be other users that will leave other answers. so that in the answers page, the only answers that should be present are ones that come from the current user.",
+  "test_instructions": [],
+  "updated_at": "2026-07-15T16:16:15.000Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
