@@ -1,1 +1,11 @@
-{"created_at":"2026-07-15T14:34:57.021Z","test_instructions":[],"id":"voice-221005eb","updated_at":"2026-07-15T14:34:57.021Z","results":[],"platform":"ios","description":"Voice note","image_urls":[]}
+{
+  "created_at": "2026-07-15T14:34:57.021Z",
+  "test_instructions": [],
+  "id": "voice-221005eb",
+  "updated_at": "2026-07-15T14:35:40.000Z",
+  "results": [],
+  "platform": "ios",
+  "description": "Okay, let's add a user tab as well, because what we want to do actually is associate each answer to a particular user, even though we don't necessarily want to indicate that. And then a single user should only be able to respond twice, once for each side of an argument.",
+  "image_urls": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
