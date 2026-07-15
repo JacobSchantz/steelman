@@ -1,1 +1,11 @@
-{"id":"voice-a4c3da1c","description":"Voice note","updated_at":"2026-07-15T14:50:03.583Z","platform":"ios","test_instructions":[],"image_urls":[],"results":[],"created_at":"2026-07-15T14:50:03.583Z"}
+{
+  "id": "voice-a4c3da1c",
+  "description": "put all the items in the tab bar like the others and actually you can put some on the right side as well kind of mirror the TikTok UI and now users it shouldn't be like that it should be a particular account my account and I should be able to sign in and out of it and stuff like that",
+  "updated_at": "2026-07-15T14:50:15.000Z",
+  "platform": "ios",
+  "test_instructions": [],
+  "image_urls": [],
+  "results": [],
+  "created_at": "2026-07-15T14:50:03.583Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
