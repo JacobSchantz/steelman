@@ -367,7 +367,7 @@ struct DiscoverView: View {
             .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
             .scrollIndicators(.hidden)
             .scrollPosition(id: $currentPageID, anchor: .top)
-            .overlay(alignment: .top) { lockMessage }
+            .overlay(alignment: .bottom) { lockMessage }
             // Drive the actual scroll whenever the target page changes: the feed auto-advancing
             // off a finished card, a bounce back from a locked peek, or a question handoff. When
             // the change came from the listener's own swipe the target is already the settled
@@ -429,8 +429,11 @@ struct DiscoverView: View {
             .background(.ultraThinMaterial, in: Capsule())
             .overlay(Capsule().stroke(Color.secondary.opacity(0.25)))
             .shadow(radius: 8, y: 2)
-            .padding(.top, 12)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            // Sits at the bottom of the feed now, lifted clear of the card's playback progress
+            // bar and the floating question banner/tab bar below it, rather than dropping from
+            // the top. The padding leaves a comfortable gap above the progress bar.
+            .padding(.bottom, 140)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
             .allowsHitTesting(false)
         }
     }

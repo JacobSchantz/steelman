@@ -1,12 +1,1 @@
-{
-  "id": "voice-3147e8ac",
-  "image_urls": [],
-  "results": [],
-  "platform": "ios",
-  "created_at": "2026-07-15T16:53:24.408Z",
-  "test_instructions": [],
-  "description": "Let's move the finish this one first text down to the bottom above the progress bar with some padding instead of up top.",
-  "updated_at": "2026-07-15T16:55:32Z",
-  "transcription_model": "mlx-community/whisper-large-v3-mlx",
-  "working_on": "workspace:238"
-}
+{"id":"voice-3147e8ac","image_urls":[],"results":[{"kind":"agent_action","at":"2026-07-15T16:58:21Z","commit_id":"PENDING","model":"claude-opus-4-8","identified_issue":"The banner is a feed-level overlay (DiscoverView.lockMessage). It was pinned via .overlay(alignment: .top) with .padding(.top, 12) and a top-edge move transition. Repositioned to alignment: .bottom with .padding(.bottom, 140) and a bottom-edge transition so it floats above the card's PlaybackIndicator (NowPlayingContent) plus the floating question banner and tab bar. The 140pt bottom padding was chosen by eye to clear that bottom chrome (the action rail uses 108 to clear the tab bar); if it reads too high or too low, that's the single number to nudge. Not verified on-device since the flow can't build here.","summary":"Moved the 'Finish listening to this one first' banner to the bottom, above the progress bar","changes":["Discover/DiscoverView.swift"],"detailed_description":"The lock banner that appears when you try to scroll past a clip you haven't finished used to drop down from the very top of the feed. I moved it to the bottom instead: it now floats up from the bottom edge and sits above the card's playback progress bar, with padding so there's a comfortable gap. Two small changes in Discover/DiscoverView.swift \u2014 the feed overlay went from alignment .top to .bottom, and the banner itself swapped its .padding(.top, 12) + top-move transition for .padding(.bottom, 140) + a bottom-move transition. I picked 140pt to lift it clear of the progress bar, the floating question banner, and the tab bar; that's the one value to tweak if the spacing looks off once you see it on the device."}],"platform":"ios","created_at":"2026-07-15T16:53:24.408Z","test_instructions":[],"description":"Let's move the finish this one first text down to the bottom above the progress bar with some padding instead of up top.","updated_at":"2026-07-15T16:58:21Z","transcription_model":"mlx-community/whisper-large-v3-mlx","working_on":"workspace:238","commit_id":"PENDING"}
