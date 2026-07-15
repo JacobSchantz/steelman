@@ -624,10 +624,12 @@ enum DiscoverPage: Identifiable, Equatable {
 
 // MARK: - Feed card
 
-/// Full-bleed page: the transcript of what this person said, and the transport that plays
-/// it (play/pause + skip back only). No artwork and no title — an argument has neither.
-/// The bar is a read-only indicator — there is no scrubbing and no skip-forward. The
-/// question isn't repeated here: it's in the header, and it opened the question.
+/// Full-bleed page: the transcript of what this person said, over the video it's said on.
+/// No artwork and no title — an argument has neither. There are no transport buttons: the
+/// page itself is the control — a tap toggles play/pause, a double tap skips back (see
+/// `playbackTapControls`). The bar is a read-only indicator — there is no scrubbing and no
+/// skip-forward. The question isn't repeated here: it's in the header, and it opened the
+/// question.
 private struct ArgumentFeedCard: View {
     let clip: ArgumentClip
     let isCurrent: Bool
@@ -644,14 +646,9 @@ private struct ArgumentFeedCard: View {
                 currentTime: isCurrent ? player.progress : 0,
                 duration: isCurrent ? player.duration : max(clip.duration, 1),
                 bufferedTime: isCurrent ? player.bufferedProgress : 0,
-                // Only the active card mirrors real engine state — other pages stay on "play".
-                isPlaying: isCurrent && player.isPlaying,
-                // Kokoro is still synthesizing this answer — spin rather than show a play button
-                // that would do nothing.
+                // Kokoro is still synthesizing this answer — say so rather than sit silent under
+                // a tap that can't play anything yet.
                 isLoading: isCurrent && player.isPreparing,
-                showSkipBackward: true,
-                onSkipBackward: { guard isCurrent else { return }; player.skipBackward() },
-                onTogglePlayPause: { guard isCurrent else { return }; player.togglePlayPause() },
                 errorMessage: isCurrent ? player.errorMessage : nil,
                 accent: SteelmanTheme.color(for: clip.side),
                 badge: clip.containsProfanity ? "Profanity" : nil,
@@ -659,6 +656,12 @@ private struct ArgumentFeedCard: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .playbackTapControls(
+            isCurrent: isCurrent,
+            isPlaying: player.isPlaying,
+            onToggle: { player.togglePlayPause() },
+            onSkipBackward: { player.skipBackward() }
+        )
         .overlay { if isLocked { LockedPeekOverlay() } }
     }
 }

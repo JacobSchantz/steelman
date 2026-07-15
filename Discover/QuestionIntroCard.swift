@@ -34,11 +34,14 @@ struct QuestionIntroCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard isCurrent else { return }
-            player.togglePlayPause()
-        }
+        // Same whole-page transport as the argument cards: a tap toggles the reading, a double
+        // tap replays the last 15 seconds, each with a brief centre flash.
+        .playbackTapControls(
+            isCurrent: isCurrent,
+            isPlaying: player.isPlaying,
+            onToggle: { player.togglePlayPause() },
+            onSkipBackward: { player.skipBackward() }
+        )
         .overlay { if isLocked { LockedPeekOverlay() } }
     }
 

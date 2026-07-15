@@ -1,22 +1,23 @@
 import SwiftUI
 
-/// The player chrome for one page of the Discover feed: **what is being said**, and the
-/// controls to hear it.
+/// The player chrome for one page of the Discover feed: **what is being said**, over the
+/// video it's said on.
 ///
 /// There is no artwork and no title. An argument has neither — it's a person talking, so
-/// the page shows the transcript of what they said and plays it. The position bar is a
-/// read-only indicator: the only way forward is to listen (see `ClipPreviewPlayer.seek`).
+/// the page shows the transcript of what they said and plays it. There are no transport
+/// buttons either: the whole page is the control (a single tap toggles play/pause, a double
+/// tap skips back — see `playbackTapControls`), so this view is just the transcript, a
+/// read-only position bar, and — while a neural voice is synthesizing — a "warming up" note.
+/// The position bar never seeks: the only way forward is to listen (see `ClipPreviewPlayer.seek`).
 struct NowPlayingContent: View {
     /// What's being said on this page — shown while it plays.
     let transcript: String
     let currentTime: TimeInterval
     let duration: TimeInterval
     var bufferedTime: TimeInterval? = nil
-    let isPlaying: Bool
+    /// A neural voice is still synthesizing this card and nothing is audible yet — shown as a
+    /// "warming up" note so a tap that can't play anything yet doesn't read as broken.
     var isLoading: Bool = false
-    var showSkipBackward: Bool = true
-    let onSkipBackward: () -> Void
-    let onTogglePlayPause: () -> Void
     var errorMessage: String? = nil
     var accent: Color = SteelmanTheme.accent
     var badge: String? = nil
@@ -35,7 +36,7 @@ struct NowPlayingContent: View {
 
             transcriptView
 
-            transport
+            if isLoading { preparingNote }
 
             progress
 
@@ -66,34 +67,15 @@ struct NowPlayingContent: View {
             .padding(.horizontal, 8)
     }
 
-    private var transport: some View {
-        HStack(spacing: 60) {
-            if showSkipBackward {
-                Button(action: onSkipBackward) {
-                    Image(systemName: "gobackward.15")
-                        .font(.system(size: 32))
-                }
-                .accessibilityLabel("Skip back 15 seconds")
-            } else {
-                Color.clear.frame(width: 32, height: 32)
-            }
-
-            Button(action: onTogglePlayPause) {
-                if isLoading {
-                    ProgressView()
-                        .frame(width: 70, height: 70)
-                } else {
-                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 70))
-                }
-            }
-            .accessibilityLabel(isPlaying ? "Pause" : "Play")
-
-            // There is deliberately no skip-forward: the only way forward is to listen.
-            // The spacer keeps play centered against the skip-back button.
-            Color.clear.frame(width: 32, height: 32)
+    /// The only status the page shows in place of the old transport: the neural voice is
+    /// still rendering this card. Play/pause and skip-back are gestures now, not buttons.
+    private var preparingNote: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+            Text("Warming up the voice")
         }
-        .foregroundStyle(accent)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.secondary)
     }
 
     private var progress: some View {
@@ -166,5 +148,113 @@ struct PlaybackIndicator: View {
         .allowsHitTesting(false)
         .accessibilityElement()
         .accessibilityLabel("Playback progress")
+    }
+}
+
+// MARK: - Tap-to-play transport
+
+/// The brief indicator a tap flashes in the centre of a page — the TikTok-style feedback
+/// that replaces the on-screen play/skip buttons. It shows the state the tap moved *to*.
+private enum PlaybackFlash: Equatable {
+    /// The tap started playback.
+    case playing
+    /// The tap paused playback.
+    case paused
+    /// A double tap skipped back 15 seconds.
+    case skippedBack
+
+    var systemImage: String {
+        switch self {
+        case .playing: return "play.fill"
+        case .paused: return "pause.fill"
+        case .skippedBack: return "gobackward.15"
+        }
+    }
+
+    var accessibilityLabel: String {
+        switch self {
+        case .playing: return "Playing"
+        case .paused: return "Paused"
+        case .skippedBack: return "Skipped back 15 seconds"
+        }
+    }
+}
+
+/// Turns a whole page into its own transport. There are no play or skip-back buttons to aim
+/// at: a **single tap** anywhere toggles play/pause, a **double tap** skips back 15 seconds,
+/// and each flashes a `PlaybackFlash` in the centre that fades on its own after a beat —
+/// the way TikTok and its kin surface a control just long enough to see it, then get out of
+/// the way. Only the on-screen (current) page reacts.
+private struct PlaybackTapControls: ViewModifier {
+    let isCurrent: Bool
+    /// Playback state *before* the tap, so the toggle can flash the state it moves to.
+    let isPlaying: Bool
+    let onToggle: () -> Void
+    let onSkipBackward: () -> Void
+
+    @State private var flash: PlaybackFlash?
+    @State private var flashDismiss: Task<Void, Never>?
+
+    func body(content: Content) -> some View {
+        content
+            .contentShape(Rectangle())
+            // The double tap is declared first so SwiftUI waits to tell it apart from a single
+            // tap before firing the toggle — the same disambiguation TikTok's like-vs-pause uses.
+            .onTapGesture(count: 2) {
+                guard isCurrent else { return }
+                onSkipBackward()
+                showFlash(.skippedBack)
+            }
+            .onTapGesture {
+                guard isCurrent else { return }
+                onToggle()
+                showFlash(isPlaying ? .paused : .playing)
+            }
+            .overlay { flashView }
+    }
+
+    @ViewBuilder
+    private var flashView: some View {
+        if let flash {
+            Image(systemName: flash.systemImage)
+                .font(.system(size: 60, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 120, height: 120)
+                .background(.ultraThinMaterial, in: Circle())
+                .shadow(radius: 12)
+                .transition(.scale(scale: 0.7).combined(with: .opacity))
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// Show `kind` now and schedule it to fade out on its own. A fresh tap supersedes the
+    /// pending fade, so rapid taps don't leave a stale icon on screen or stack timers.
+    private func showFlash(_ kind: PlaybackFlash) {
+        flashDismiss?.cancel()
+        withAnimation(.snappy(duration: 0.18)) { flash = kind }
+        flashDismiss = Task {
+            try? await Task.sleep(for: .seconds(0.8))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.45)) { flash = nil }
+        }
+    }
+}
+
+extension View {
+    /// Drive playback by tapping the page itself: single tap toggles play/pause, double tap
+    /// skips back 15 seconds, each with a brief centre flash. See `PlaybackTapControls`.
+    func playbackTapControls(
+        isCurrent: Bool,
+        isPlaying: Bool,
+        onToggle: @escaping () -> Void,
+        onSkipBackward: @escaping () -> Void
+    ) -> some View {
+        modifier(PlaybackTapControls(
+            isCurrent: isCurrent,
+            isPlaying: isPlaying,
+            onToggle: onToggle,
+            onSkipBackward: onSkipBackward
+        ))
     }
 }
