@@ -1,1 +1,11 @@
-{"description":"Voice note","results":[],"test_instructions":[],"image_urls":[],"platform":"ios","created_at":"2026-07-15T13:56:10.287Z","updated_at":"2026-07-15T13:56:10.287Z","id":"voice-7b752dea"}
+{
+  "description": "When we're composing an answer, the question should be fixed. It came from a specific question. Also, the only thing we should select the side, AI will figure that out. We should just type our answer or speak our answer and also remove the token from down below. We'll handle that server side. So the answer should literally just be a fixed question. The answer sheet is a fixed question and then a text box and recording button. And then they can choose to either use one of those to submit their answer.",
+  "results": [],
+  "test_instructions": [],
+  "image_urls": [],
+  "platform": "ios",
+  "created_at": "2026-07-15T13:56:10.287Z",
+  "updated_at": "2026-07-15T13:56:27.000Z",
+  "id": "voice-7b752dea",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
