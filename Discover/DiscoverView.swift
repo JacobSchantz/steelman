@@ -578,26 +578,29 @@ private struct ArgumentFeedCard: View {
     @ObservedObject var player: ClipPreviewPlayer
 
     var body: some View {
-        NowPlayingContent(
-            transcript: clip.answerText,
-            currentTime: isCurrent ? player.progress : 0,
-            duration: isCurrent ? player.duration : max(clip.duration, 1),
-            bufferedTime: isCurrent ? player.bufferedProgress : 0,
-            // Only the active card mirrors real engine state — other pages stay on "play".
-            isPlaying: isCurrent && player.isPlaying,
-            // Kokoro is still synthesizing this answer — spin rather than show a play button
-            // that would do nothing.
-            isLoading: isCurrent && player.isPreparing,
-            showSkipBackward: true,
-            onSkipBackward: { guard isCurrent else { return }; player.skipBackward() },
-            onTogglePlayPause: { guard isCurrent else { return }; player.togglePlayPause() },
-            errorMessage: isCurrent ? player.errorMessage : nil,
-            accent: SteelmanTheme.color(for: clip.side),
-            badge: clip.containsProfanity ? "Profanity" : nil,
-            badgeColor: SteelmanTheme.danger
-        )
+        // The page is now the full-screen video with the transcript over it. Only the
+        // current card decodes frames; the peek/off-screen cards keep the player paused.
+        VideoBackdrop(isActive: isCurrent) {
+            NowPlayingContent(
+                transcript: clip.answerText,
+                currentTime: isCurrent ? player.progress : 0,
+                duration: isCurrent ? player.duration : max(clip.duration, 1),
+                bufferedTime: isCurrent ? player.bufferedProgress : 0,
+                // Only the active card mirrors real engine state — other pages stay on "play".
+                isPlaying: isCurrent && player.isPlaying,
+                // Kokoro is still synthesizing this answer — spin rather than show a play button
+                // that would do nothing.
+                isLoading: isCurrent && player.isPreparing,
+                showSkipBackward: true,
+                onSkipBackward: { guard isCurrent else { return }; player.skipBackward() },
+                onTogglePlayPause: { guard isCurrent else { return }; player.togglePlayPause() },
+                errorMessage: isCurrent ? player.errorMessage : nil,
+                accent: SteelmanTheme.color(for: clip.side),
+                badge: clip.containsProfanity ? "Profanity" : nil,
+                badgeColor: SteelmanTheme.danger
+            )
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
         .overlay { if isLocked { LockedPeekOverlay() } }
     }
 }

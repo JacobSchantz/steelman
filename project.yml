@@ -38,6 +38,10 @@ targets:
       - path: Questions
       - path: Submit
       - path: Shared
+      # Bundled media — the looping Discover background video. Plain path (not a folder
+      # reference) so the .mp4 lands flat in the bundle and Bundle.main.url(forResource:)
+      # resolves it by name.
+      - path: Media
       # Obj-C++ bridge to sherpa-onnx (Kokoro TTS). Reaches Swift via the bridging header.
       - path: Speech
       - path: Assets.xcassets

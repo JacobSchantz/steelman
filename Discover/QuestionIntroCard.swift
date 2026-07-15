@@ -17,9 +17,7 @@ struct QuestionIntroCard: View {
     private var isReading: Bool { isCurrent && player.isPlaying }
 
     var body: some View {
-        ZStack {
-            Color(.systemBackground)
-
+        VideoBackdrop(isActive: isCurrent) {
             VStack(spacing: 18) {
                 Spacer()
 
