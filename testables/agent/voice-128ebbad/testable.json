@@ -1,1 +1,11 @@
-{"id":"voice-128ebbad","created_at":"2026-07-15T13:01:31.594Z","image_urls":[],"test_instructions":[],"platform":"ios","description":"Voice note","updated_at":"2026-07-15T13:01:31.594Z","results":[]}
+{
+  "id": "voice-128ebbad",
+  "created_at": "2026-07-15T13:01:31.594Z",
+  "image_urls": [],
+  "test_instructions": [],
+  "platform": "ios",
+  "description": "Let's actually nix the play and the skip back controls. Just tapping on the anywhere on an item on that screen should pause and play it. It should toggle the play pause. and then there should be, so we can get rid of the button, but then there should just be a brief thing that hovers over the screen and then hides again after a second or two. Kind of like TikTok and those apps do it. And then double tap should skip back 15 seconds.",
+  "updated_at": "2026-07-15T13:03:25.000Z",
+  "results": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
