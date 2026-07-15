@@ -1,1 +1,11 @@
-{"updated_at":"2026-07-15T13:40:35.450Z","image_urls":[],"id":"voice-99c08356","test_instructions":[],"description":"Voice note","platform":"ios","created_at":"2026-07-15T13:40:35.450Z","results":[]}
+{
+  "updated_at": "2026-07-15T13:45:06.000Z",
+  "image_urls": [],
+  "id": "voice-99c08356",
+  "test_instructions": [],
+  "description": "Let's have a horizontal scroll to scroll between questions and then also that should include an auto scroll once we finish working on we finish all the answers for a particular question. Also we should add an answer button somewhere where the user can draft an answer while on a particular question.",
+  "platform": "ios",
+  "created_at": "2026-07-15T13:40:35.450Z",
+  "results": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
