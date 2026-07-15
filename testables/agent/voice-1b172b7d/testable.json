@@ -1,1 +1,11 @@
-{"image_urls":[],"platform":"ios","id":"voice-1b172b7d","description":"Voice note","test_instructions":[],"created_at":"2026-07-15T16:29:16.199Z","updated_at":"2026-07-15T16:29:16.199Z","results":[]}
+{
+  "image_urls": [],
+  "platform": "ios",
+  "id": "voice-1b172b7d",
+  "description": "Slide the swipe up for the first argument text that appears on a question up about 100 pixels so it is off the screen when we're on the first item.",
+  "test_instructions": [],
+  "created_at": "2026-07-15T16:29:16.199Z",
+  "updated_at": "2026-07-15T16:29:47.000Z",
+  "results": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
