@@ -83,15 +83,25 @@ struct DiscoverView: View {
         return recommendedQuestions.first ?? questions.questions.first
     }
 
-    /// The feed for the current question: its question card followed by its clips. The feed
-    /// ends on the last clip — it no longer trails the next question's card, so there is
-    /// nothing to auto-advance or scroll into. A new question is reached only through the
-    /// "Browse questions" picker.
+    /// The feed for the current question: its question card, its clips, and — once there are
+    /// answers to end — a closing "end of answers" page. The feed no longer trails the next
+    /// question's card, so nothing auto-rolls into a new question; the closing page is a
+    /// deliberate stop that offers one way on, a jump to a random next question. A question
+    /// with no answers has no end to mark, so its lone card stays the whole feed.
     private var pages: [DiscoverPage] {
         guard let currentQuestion else { return [] }
         var pages: [DiscoverPage] = [.question(currentQuestion)]
         pages += clips.map { .clip($0) }
+        if !clips.isEmpty { pages.append(.end) }
         return pages
+    }
+
+    /// Whether there's another question to send the listener to from the end card. There is
+    /// as long as the library holds any question other than the current one — the random pick
+    /// prefers ones with answers but will fall back to any of them.
+    private var hasNextQuestion: Bool {
+        let currentID = currentQuestion?.id
+        return questions.questions.contains { $0.id != currentID }
     }
 
     private var currentPage: DiscoverPage? {
@@ -397,6 +407,12 @@ struct DiscoverView: View {
                 isCurrent: isCurrent,
                 player: player
             )
+        case .end:
+            EndOfAnswersCard(
+                isCurrent: isCurrent,
+                hasNextQuestion: hasNextQuestion,
+                onNextQuestion: goToRandomNextQuestion
+            )
         }
     }
 
@@ -487,6 +503,27 @@ struct DiscoverView: View {
         withAnimation(.snappy) {
             currentPageID = pages[idx + 1].id
         }
+    }
+
+    /// The end card's one way forward: mark this question done and drop onto a fresh one,
+    /// picked at random. Pauses first so the new question's card opens in the clear rather
+    /// than over the tail of whatever was still reading.
+    private func goToRandomNextQuestion() {
+        guard let next = randomNextQuestionID() else { return }
+        if player.isPlaying { player.togglePlayPause() }
+        select(questionID: next, completingCurrent: true)
+    }
+
+    /// A random question other than the current one. Prefers ones with something to hear, and
+    /// among those the ones this listener hasn't been through yet, so "next question" keeps
+    /// turning up fresh arguments before it starts repeating. Falls back to any other question
+    /// when nothing with answers is left.
+    private func randomNextQuestionID() -> UUID? {
+        let currentID = currentQuestion?.id
+        let withAnswers = recommendedQuestions.filter { $0.id != currentID }
+        let fresh = withAnswers.filter { !completedQuestionIDs.contains($0.id) }
+        if let pick = (fresh.isEmpty ? withAnswers : fresh).randomElement() { return pick.id }
+        return questions.questions.filter { $0.id != currentID }.randomElement()?.id
     }
 
     private func select(questionID: UUID, completingCurrent: Bool) {
@@ -604,6 +641,9 @@ struct DiscoverView: View {
             prefetchUpcoming(clip)
             player.play(.clip(clip, url: deckCache.localSegmentURL(for: clip)))
             downloadSegment(for: clip)
+        case .end:
+            // The closing page reads nothing — it's a resting stop, not a card to hear out.
+            player.stop()
         }
         persist()
     }
@@ -659,17 +699,25 @@ struct DiscoverView: View {
 
 // MARK: - Pages
 
-/// A page of the feed: the card that reads a question, or one viewpoint on it.
+/// A page of the feed: the card that reads a question, one viewpoint on it, or the closing
+/// "end of answers" page.
 enum DiscoverPage: Identifiable, Equatable {
     case question(Question)
     case clip(ArgumentClip)
+    case end
+
+    /// A fixed identity for the closing page. It's shared across questions, which is safe
+    /// because only one question's feed is ever built at a time.
+    static let endID = UUID(uuidString: "E4D0F1A2-0000-4000-8000-000000000000")!
 
     /// A question card is identified by its question, a clip by its answer — both stable
-    /// across deck rebuilds, so "already heard" survives one.
+    /// across deck rebuilds, so "already heard" survives one. The closing page is the same
+    /// fixed id every time.
     var id: UUID {
         switch self {
         case .question(let question): return question.id
         case .clip(let clip): return clip.id
+        case .end: return DiscoverPage.endID
         }
     }
 }
@@ -712,6 +760,62 @@ private struct ArgumentFeedCard: View {
             onToggle: { player.togglePlayPause() },
             onSkipBackward: { player.skipBackward() }
         )
+    }
+}
+
+// MARK: - End of answers
+
+/// The closing page of a question's feed: you've heard every argument. It reads nothing out —
+/// it's a deliberate stop rather than a card to listen to — and offers one way forward, a
+/// button that drops you onto a fresh question chosen at random. When the library has nothing
+/// else to send you to, it says so instead of showing a dead button.
+private struct EndOfAnswersCard: View {
+    let isCurrent: Bool
+    let hasNextQuestion: Bool
+    let onNextQuestion: () -> Void
+
+    var body: some View {
+        VideoBackdrop(isActive: isCurrent) {
+            VStack(spacing: 18) {
+                Spacer()
+
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 52))
+                    .foregroundStyle(SteelmanTheme.accent)
+
+                Text("You've heard both sides")
+                    .font(.system(.title, design: .serif).weight(.bold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 28)
+
+                Text("That's every argument on this question.")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Group {
+                    if hasNextQuestion {
+                        Button(action: onNextQuestion) {
+                            Label("Next question", systemImage: "shuffle")
+                                .font(.headline)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(SteelmanTheme.accent)
+                    } else {
+                        Text("That's the last of the questions for now.")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.bottom, 48)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
