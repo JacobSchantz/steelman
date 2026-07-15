@@ -1,1 +1,11 @@
-{"test_instructions":[],"platform":"ios","id":"voice-2526a042","updated_at":"2026-07-15T12:08:49.413Z","created_at":"2026-07-15T12:08:49.413Z","description":"Voice note","image_urls":[],"results":[]}
+{
+  "test_instructions": [],
+  "platform": "ios",
+  "id": "voice-2526a042",
+  "updated_at": "2026-07-15T12:09:56.000Z",
+  "created_at": "2026-07-15T12:08:49.413Z",
+  "description": "The question should just be a text box and an audio field. Get rid of all the context side A, side B, get rid of all that other stuff. This is when creating a new question.",
+  "image_urls": [],
+  "results": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
