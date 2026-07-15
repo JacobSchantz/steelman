@@ -1,1 +1,11 @@
-{"test_instructions":[],"platform":"ios","results":[],"id":"voice-cebc315f","description":"Voice note","image_urls":[],"created_at":"2026-07-15T12:07:45.960Z","updated_at":"2026-07-15T12:07:45.960Z"}
+{
+  "test_instructions": [],
+  "platform": "ios",
+  "results": [],
+  "id": "voice-cebc315f",
+  "description": "When it switches questions, it automatically goes to the first answer to a question. That shouldn't happen. It should stay on the question until it's finished reading the question. and then it can then you can auto scroll down",
+  "image_urls": [],
+  "created_at": "2026-07-15T12:07:45.960Z",
+  "updated_at": "2026-07-15T12:08:50.000Z",
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
