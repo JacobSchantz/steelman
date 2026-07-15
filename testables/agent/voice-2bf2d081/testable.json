@@ -1,1 +1,11 @@
-{"image_urls":[],"id":"voice-2bf2d081","results":[],"platform":"ios","created_at":"2026-07-15T12:06:01.321Z","updated_at":"2026-07-15T12:06:01.321Z","description":"Voice note","test_instructions":[]}
+{
+  "image_urls": [],
+  "id": "voice-2bf2d081",
+  "results": [],
+  "platform": "ios",
+  "created_at": "2026-07-15T12:06:01.321Z",
+  "updated_at": "2026-07-15T12:06:37.000Z",
+  "description": "Let's move the questions icon to the top left and then add a settings icon. Settings icon should control the speech functionality.",
+  "test_instructions": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
