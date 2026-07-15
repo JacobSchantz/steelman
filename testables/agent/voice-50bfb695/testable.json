@@ -1,11 +1,12 @@
 {
   "test_instructions": [],
-  "updated_at": "2026-07-15T12:11:02.000Z",
+  "updated_at": "2026-07-15T12:38:12Z",
   "results": [],
   "image_urls": [],
   "platform": "ios",
   "description": "Now instead of just audio, each item should actually be a full screen video. So for now, just pull in some good video that could play in the background behind the text. And we'll use that as the video.",
   "created_at": "2026-07-15T12:09:44.064Z",
   "id": "voice-50bfb695",
-  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+  "transcription_model": "mlx-community/whisper-large-v3-mlx",
+  "working_on": "workspace:207"
 }
