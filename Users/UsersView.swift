@@ -24,6 +24,9 @@ struct ProfileView: View {
     @State private var renaming: User?
     @State private var renameText = ""
     @State private var signInName = ""
+    /// Settings used to hang off the feed's action rail; it now lives here, next to the rest of
+    /// the account controls, reached from the gear in this tab's navigation bar.
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -36,6 +39,21 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(users.isSignedIn ? .large : .inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
+            // The voice/playback settings, moved here from the feed's action rail. A sheet keeps
+            // it a quick flick-and-dismiss that leaves the Profile screen's own state untouched.
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(settings: SpeechSettings.shared)
+            }
             .alert("New account", isPresented: $addingUser) {
                 TextField("Name", text: $newName)
                 Button("Cancel", role: .cancel) {}

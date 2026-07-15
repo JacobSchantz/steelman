@@ -52,7 +52,6 @@ struct DiscoverView: View {
     @State private var didInitialLoad = false
     @State private var browsingQuestions = false
     @State private var composingAnswer = false
-    @State private var showingSettings = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
     /// The pending hands-free roll onto the next page. A card reports "finished" a beat
@@ -184,11 +183,6 @@ struct DiscoverView: View {
                     onSelect: { select(questionID: $0, completingCurrent: false) }
                 )
             }
-            // Settings is a sheet, not a page: it's a quick knob you flick and dismiss, and
-            // keeping it off the navigation stack leaves the feed's own state untouched.
-            .sheet(isPresented: $showingSettings) {
-                SettingsView(settings: speechSettings)
-            }
             // The answer composer, opened on whatever question you're currently in. Saving an
             // answer dismisses it and drops you back on the feed; the new answer flows into the
             // deck through the `answers.answers` change handler that rebuilds the clips.
@@ -241,12 +235,30 @@ struct DiscoverView: View {
     }
 
     /// The TikTok-style vertical action rail on the right edge of the feed. Top to bottom:
-    /// answer this question (the primary, tinted action), browse questions, hide/show the
-    /// question banner, and settings. It floats over the video with a little bottom inset so it
-    /// clears the question banner, and each control is a circular glyph the way the like/comment
-    /// column reads on TikTok.
+    /// answer this question (the primary, tinted action), browse questions, and hide/show the
+    /// question banner. Settings no longer lives here — it moved into the Profile ("my account")
+    /// tab, where the rest of the account controls are. Every control now rides Liquid Glass so
+    /// the column reads as one floating cluster over the video. The stack sits tighter and a
+    /// touch lower than it used to, giving the feed back the screen real estate it was eating.
+    @ViewBuilder
     private var feedActionRail: some View {
-        VStack(spacing: 20) {
+        // Liquid Glass wants its neighbouring shapes inside a `GlassEffectContainer` so the
+        // circles read as one cluster and blend where they crowd; before Liquid Glass shipped
+        // there's no container to wrap in, so the same stack renders on its own with the
+        // material fallback each button carries.
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 12) { railStack }
+                .padding(.trailing, 14)
+                .padding(.bottom, 108)
+        } else {
+            railStack
+                .padding(.trailing, 14)
+                .padding(.bottom, 108)
+        }
+    }
+
+    private var railStack: some View {
+        VStack(spacing: 12) {
             railButton(
                 systemImage: "square.and.pencil",
                 label: "Answer this question",
@@ -268,17 +280,13 @@ struct DiscoverView: View {
             ) {
                 withAnimation(.snappy) { showQuestionHeader.toggle() }
             }
-
-            railButton(systemImage: "gearshape.fill", label: "Settings") {
-                showingSettings = true
-            }
         }
-        .padding(.trailing, 14)
-        .padding(.bottom, 132)
     }
 
-    /// One circular control on the action rail. Defaults to a translucent material chip; pass a
-    /// `tint` to fill it for the primary action.
+    /// One circular control on the action rail, sitting on Liquid Glass. Pass a `tint` to fill
+    /// the primary action with tinted glass; the rest use plain regular glass. On OS versions
+    /// before Liquid Glass shipped, it falls back to the old translucent-material chip so the
+    /// rail still reads over the video.
     private func railButton(
         systemImage: String,
         label: String,
@@ -290,15 +298,7 @@ struct DiscoverView: View {
                 .font(.title2)
                 .foregroundStyle(.white)
                 .frame(width: 50, height: 50)
-                .background {
-                    if let tint {
-                        Circle().fill(tint)
-                    } else {
-                        Circle().fill(.ultraThinMaterial)
-                    }
-                }
-                .overlay(Circle().stroke(.white.opacity(0.18)))
-                .shadow(radius: 6, y: 2)
+                .railGlassBackground(tint: tint)
         }
         .accessibilityLabel(label)
     }
@@ -714,5 +714,32 @@ private struct ArgumentFeedCard: View {
             onToggle: { player.togglePlayPause() },
             onSkipBackward: { player.skipBackward() }
         )
+    }
+}
+
+// MARK: - Rail glass
+
+private extension View {
+    /// The circular Liquid Glass chip behind a rail button. A `tint` fills the glass for the
+    /// primary action; the rest use plain regular glass. Both are `.interactive()` so the glass
+    /// reacts to touch. Before Liquid Glass (pre-iOS 26) there's no glass to lean on, so it falls
+    /// back to the translucent-material circle the rail used previously.
+    @ViewBuilder
+    func railGlassBackground(tint: Color?) -> some View {
+        if #available(iOS 26.0, *) {
+            let glass = (tint.map { Glass.regular.tint($0) } ?? .regular).interactive()
+            self.glassEffect(glass, in: .circle)
+        } else {
+            self
+                .background {
+                    if let tint {
+                        Circle().fill(tint)
+                    } else {
+                        Circle().fill(.ultraThinMaterial)
+                    }
+                }
+                .overlay(Circle().stroke(.white.opacity(0.18)))
+                .shadow(radius: 6, y: 2)
+        }
     }
 }
