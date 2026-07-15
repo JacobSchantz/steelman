@@ -31,6 +31,19 @@ final class AnswerStore: ObservableObject {
         answers.first { $0.id == id }
     }
 
+    /// Every answer a given user has recorded for one question. Backs the "one answer per
+    /// side" rule: a user may hold at most one answer per side here, so at most two per
+    /// question.
+    func answers(by userId: UUID, for questionId: UUID) -> [Answer] {
+        answers.filter { $0.userId == userId && $0.questionId == questionId }
+    }
+
+    /// Whether `userId` has already argued `side` on this question — the check the composer
+    /// runs before saving so nobody gets a second answer on a side they've already taken.
+    func hasAnswered(side: ArgumentSide, for questionId: UUID, by userId: UUID) -> Bool {
+        answers(by: userId, for: questionId).contains { $0.resolvedSide == side }
+    }
+
     func audioURL(for answer: Answer) -> URL? {
         guard let name = answer.audioFileName else { return nil }
         let url = audioDir.appendingPathComponent(name)

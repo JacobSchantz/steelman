@@ -38,6 +38,7 @@ targets:
       - path: Questions
       - path: Submit
       - path: Answers
+      - path: Users
       - path: Shared
       # Bundled media — the looping Discover background video. Plain path (not a folder
       # reference) so the .mp4 lands flat in the bundle and Bundle.main.url(forResource:)

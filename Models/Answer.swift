@@ -4,6 +4,11 @@ import Foundation
 struct Answer: Identifiable, Codable, Hashable {
     let id: UUID
     var questionId: UUID
+    /// Which user authored this answer. Optional — and optional in the JSON too — so seed
+    /// answers and anything saved before users existed still decode (as `nil`, unattributed).
+    /// The feed deliberately doesn't surface it; it exists so the "one answer per side" rule
+    /// can be enforced per person.
+    var userId: UUID?
     /// Author's claimed side (optional; AI may reclassify).
     var claimedSide: ArgumentSide?
     var text: String
@@ -18,6 +23,7 @@ struct Answer: Identifiable, Codable, Hashable {
     init(
         id: UUID = UUID(),
         questionId: UUID,
+        userId: UUID? = nil,
         claimedSide: ArgumentSide? = nil,
         text: String = "",
         audioFileName: String? = nil,
@@ -27,6 +33,7 @@ struct Answer: Identifiable, Codable, Hashable {
     ) {
         self.id = id
         self.questionId = questionId
+        self.userId = userId
         self.claimedSide = claimedSide
         self.text = text
         self.audioFileName = audioFileName

@@ -1,0 +1,94 @@
+import Foundation
+import SwiftUI
+
+/// The roster of local users plus which one is *active*. Every answer is stamped with the
+/// active user's id at submit time, and the "one answer per side" rule is checked against
+/// that same id — so switching the active user is how one device stands in for several people.
+///
+/// There is always at least one user and always an active one: the store seeds a first user on
+/// an empty load and never lets the active id dangle, so callers can read `currentUser` without
+/// unwrapping a "no user yet" state.
+@MainActor
+final class UserStore: ObservableObject {
+    @Published private(set) var users: [User] = []
+    @Published private(set) var currentUserID: UUID
+
+    private let fileURL: URL
+    private let currentKey = "steelman.currentUserID"
+    private let encoder = JSONEncoder.steelman
+    private let decoder = JSONDecoder.steelman
+
+    init() {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        fileURL = docs.appendingPathComponent("steelman_users.json")
+
+        let loaded = Self.load(from: fileURL, decoder: decoder)
+        let roster = loaded.isEmpty ? [User(name: "You")] : loaded
+        users = roster
+
+        // Restore the saved active user, but never trust an id that isn't in the roster
+        // anymore (a deleted user, or a fresh install): fall back to the first user.
+        let savedID = UserDefaults.standard.string(forKey: currentKey).flatMap(UUID.init)
+        currentUserID = roster.first { $0.id == savedID }?.id ?? roster[0].id
+
+        if loaded.isEmpty { persist() }
+        UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
+    }
+
+    var currentUser: User {
+        users.first { $0.id == currentUserID } ?? users[0]
+    }
+
+    func user(id: UUID) -> User? {
+        users.first { $0.id == id }
+    }
+
+    /// Add a user and make them active, so the natural next thing — submitting an answer —
+    /// is attributed to the person you just created.
+    @discardableResult
+    func add(name: String) -> User {
+        let user = User(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        users.append(user)
+        currentUserID = user.id
+        persist()
+        UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
+        return user
+    }
+
+    func rename(_ userId: UUID, to name: String) {
+        guard let i = users.firstIndex(where: { $0.id == userId }) else { return }
+        users[i].name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        persist()
+    }
+
+    func setCurrent(_ userId: UUID) {
+        guard users.contains(where: { $0.id == userId }) else { return }
+        currentUserID = userId
+        UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
+    }
+
+    /// Remove a user. The last user can't be deleted — there's always someone to attribute an
+    /// answer to. If the active user is the one removed, activity falls to whoever's first.
+    func delete(_ userId: UUID) {
+        guard users.count > 1 else { return }
+        users.removeAll { $0.id == userId }
+        if currentUserID == userId {
+            currentUserID = users[0].id
+            UserDefaults.standard.set(currentUserID.uuidString, forKey: currentKey)
+        }
+        persist()
+    }
+
+    private static func load(from url: URL, decoder: JSONDecoder) -> [User] {
+        guard let data = try? Data(contentsOf: url),
+              let decoded = try? decoder.decode([User].self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    private func persist() {
+        guard let data = try? encoder.encode(users) else { return }
+        try? data.write(to: fileURL, options: .atomic)
+    }
+}

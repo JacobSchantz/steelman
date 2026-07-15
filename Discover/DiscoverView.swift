@@ -19,6 +19,7 @@ import SwiftUI
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
+    @ObservedObject var users: UserStore
 
     @StateObject private var player = ClipPreviewPlayer()
     @StateObject private var speech = KokoroModelStore.shared
@@ -229,6 +230,7 @@ struct DiscoverView: View {
                 SubmitAnswerView(
                     questions: questions,
                     answers: answers,
+                    users: users,
                     initialQuestionID: currentQuestion?.id,
                     onSaved: { composingAnswer = false }
                 )
