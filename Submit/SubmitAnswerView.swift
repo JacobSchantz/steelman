@@ -15,10 +15,7 @@ struct SubmitAnswerView: View {
     @StateObject private var dictation = OnDeviceSpeechTranscriber()
 
     @State private var selectedQuestionId: UUID?
-    @State private var claimedSide: ArgumentSide = .a
     @State private var text = ""
-    @State private var tokenInput = ""
-    @State private var showToken = false
     @State private var isSubmitting = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
@@ -33,31 +30,12 @@ struct SubmitAnswerView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    if questions.questions.isEmpty {
-                        Text("Add a question first.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Picker("Question", selection: Binding(
-                            get: { selectedQuestionId ?? questions.questions.first?.id },
-                            set: { selectedQuestionId = $0 }
-                        )) {
-                            ForEach(questions.questions) { q in
-                                Text(q.prompt).lineLimit(2).tag(Optional(q.id))
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Question")
-                }
-
                 if let q = selectedQuestion {
-                    Section("Your claimed side") {
-                        Picker("Side", selection: $claimedSide) {
-                            Text(q.sideALabel).tag(ArgumentSide.a)
-                            Text(q.sideBLabel).tag(ArgumentSide.b)
-                        }
-                        .pickerStyle(.segmented)
+                    Section {
+                        Text(q.prompt)
+                            .font(.headline)
+                    } header: {
+                        Text("Question")
                     }
 
                     Section {
@@ -67,7 +45,7 @@ struct SubmitAnswerView: View {
                     } header: {
                         Text("Answer")
                     } footer: {
-                        Text("Dictate with on-device speech recognition (same approach as ATG). AI classifies lean + profanity. Discover alternates sides before replaying a side; text answers play via TTS.")
+                        Text("Write or dictate your answer. AI figures out which side you land on and flags profanity; text answers play via TTS in Discover.")
                     }
 
                     Section("Dictate (on-device STT)") {
@@ -128,49 +106,14 @@ struct SubmitAnswerView: View {
                                 .foregroundStyle(statusIsError ? .red : .secondary)
                         }
                     }
-                }
-
-                Section {
-                    Button {
-                        showToken = true
-                    } label: {
-                        Label(
-                            AnswerAnalysisService.hasToken ? "OpenRouter token set" : "Add OpenRouter token",
-                            systemImage: "key.fill"
-                        )
+                } else {
+                    Section {
+                        Text("Add a question first.")
+                            .foregroundStyle(.secondary)
                     }
-                } footer: {
-                    Text("Without a token, lean/profanity use a simple on-device heuristic. Token is stored in Keychain.")
                 }
             }
             .navigationTitle("Answer")
-            .sheet(isPresented: $showToken) {
-                NavigationStack {
-                    Form {
-                        SecureField("sk-or-...", text: $tokenInput)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        Button("Save") {
-                            AnswerAnalysisService.apiToken = tokenInput
-                            showToken = false
-                        }
-                        .disabled(tokenInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                        if AnswerAnalysisService.hasToken {
-                            Button("Clear token", role: .destructive) {
-                                AnswerAnalysisService.apiToken = nil
-                                tokenInput = ""
-                            }
-                        }
-                    }
-                    .navigationTitle("OpenRouter")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { showToken = false }
-                        }
-                    }
-                }
-                .presentationDetents([.medium])
-            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -225,16 +168,18 @@ struct SubmitAnswerView: View {
             return
         }
 
+        // No claimed side: the answer sheet is just a fixed question plus the answer.
+        // AI classifies which side it lands on during analysis.
         let analysis = await analysisService.analyze(
             question: question,
             text: body,
-            claimedSide: claimedSide
+            claimedSide: nil
         )
 
         let answer = Answer(
             id: answerId,
             questionId: question.id,
-            claimedSide: claimedSide,
+            claimedSide: nil,
             text: body,
             audioFileName: nil,
             analysis: analysis
