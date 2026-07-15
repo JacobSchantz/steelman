@@ -100,6 +100,10 @@ final class ClipPreviewPlayer: ObservableObject {
     /// Where in `ttsFullText` the live utterance starts (non-zero after a backward seek).
     private var ttsUtteranceOffset = 0
 
+    /// The listener's chosen reading speed, as an AVPlayer rate. Read live at each play/resume
+    /// so a card started after the setting changed uses the new pace.
+    private var playbackRate: Float { Float(SpeechSettings.shared.speed) }
+
     private var activeKey: String?
     private var preloaded: [String: AVPlayer] = [:]
     private var preloadOrder: [String] = []
@@ -285,6 +289,23 @@ final class ClipPreviewPlayer: ObservableObject {
 
     func skipBackward(_ seconds: TimeInterval = 15) { seek(to: progress - seconds) }
 
+    /// Apply a reading-speed change to whatever is playing right now. New cards read the
+    /// setting themselves when they start; this only exists so a change made mid-card takes
+    /// effect without waiting for the next one.
+    ///
+    /// The fallback TTS voice is left alone: `AVSpeechUtterance.rate` is fixed once an
+    /// utterance is speaking, so its new pace lands on the next card rather than mid-word.
+    func updatePlaybackSpeed() {
+        guard !isTTS, let player else { return }
+        let rate = playbackRate
+        player.defaultRate = rate
+        // Only nudge the live rate while actually playing — writing a non-zero rate to a
+        // paused player would start it, and `defaultRate` already covers the next `play()`.
+        if player.timeControlStatus != .paused {
+            player.rate = rate
+        }
+    }
+
     func stop() {
         stopPlayersOnly()
         current = nil
@@ -320,6 +341,9 @@ final class ClipPreviewPlayer: ObservableObject {
                 observeItem(warm.currentItem)
                 observeTimeControl(warm)
                 observePlaybackEnd(warm.currentItem)
+                // `defaultRate` is what `play()` starts at on iOS 16+, so setting it here is
+                // all it takes for the reading-speed setting to reach every playback path.
+                warm.defaultRate = playbackRate
                 warm.play()
                 addObserver()
                 syncPlaybackStateFromEngine()
@@ -331,6 +355,7 @@ final class ClipPreviewPlayer: ObservableObject {
         item.preferredForwardBufferDuration = fullEpisodeForwardBuffer
         let newPlayer = AVPlayer(playerItem: item)
         newPlayer.automaticallyWaitsToMinimizeStalling = true
+        newPlayer.defaultRate = playbackRate
         player = newPlayer
         observeItem(item)
         observeTimeControl(newPlayer)
@@ -567,7 +592,12 @@ final class ClipPreviewPlayer: ObservableObject {
 
         let utterance = AVSpeechUtterance(string: remaining)
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        // Scale the default rate by the listener's speed, clamped to what the engine accepts
+        // so 2× can't push past the maximum speakable rate.
+        utterance.rate = min(
+            AVSpeechUtteranceMaximumSpeechRate,
+            max(AVSpeechUtteranceMinimumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * playbackRate)
+        )
 
         let delegate = TTSDelegate(
             onWillSpeakRange: { [weak self] range in

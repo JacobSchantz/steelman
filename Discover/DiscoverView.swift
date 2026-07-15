@@ -22,6 +22,7 @@ struct DiscoverView: View {
 
     @StateObject private var player = ClipPreviewPlayer()
     @StateObject private var speech = KokoroModelStore.shared
+    @ObservedObject private var speechSettings = SpeechSettings.shared
 
     /// The question being scrolled through. Nil until the first recommendation lands.
     @State private var selectedQuestionID: UUID?
@@ -43,6 +44,7 @@ struct DiscoverView: View {
     @State private var downloadingClips: Set<UUID> = []
     @State private var didInitialLoad = false
     @State private var browsingQuestions = false
+    @State private var showingSettings = false
     @State private var showLockMessage = false
     @State private var lockMessageTask: Task<Void, Never>?
 
@@ -142,11 +144,17 @@ struct DiscoverView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button { browsingQuestions = true } label: {
                         Image(systemName: "text.bubble.fill")
                     }
                     .accessibilityLabel("Browse questions")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingSettings = true } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
                 }
             }
             // A page you go to, not a sheet that covers the feed: browsing the library is a
@@ -159,6 +167,11 @@ struct DiscoverView: View {
                     currentQuestionID: currentQuestion?.id,
                     onSelect: { select(questionID: $0, completingCurrent: false) }
                 )
+            }
+            // Settings is a sheet, not a page: it's a quick knob you flick and dismiss, and
+            // keeping it off the navigation stack leaves the feed's own state untouched.
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(settings: speechSettings)
             }
             .task(id: currentPageID) { await prepareAndPlayCurrent() }
             .onAppear {
@@ -181,6 +194,9 @@ struct DiscoverView: View {
                 advanceToNextPage(afterHearing: finished)
             }
             .onChange(of: currentPageID) { _, newID in handleLanding(on: newID) }
+            // A speed change made mid-card should be heard now, not on the next one. New
+            // cards read the setting on their own when they start playing.
+            .onChange(of: speechSettings.speed) { _, _ in player.updatePlaybackSpeed() }
             .onDisappear { lockMessageTask?.cancel() }
         }
     }
