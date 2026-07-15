@@ -71,6 +71,8 @@ struct QuestionIntroCard: View {
                     .font(.subheadline.weight(.semibold))
             }
             .foregroundStyle(.secondary)
+            // Lift the swipe-up hint ~100px up off the bottom of the screen on the intro card.
+            .offset(y: -100)
         }
     }
 }
