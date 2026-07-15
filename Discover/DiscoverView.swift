@@ -155,12 +155,12 @@ struct DiscoverView: View {
                     // page down or up. As an overlay they expand and contract in place and the
                     // feed underneath never moves.
                     feed
-                        .overlay(alignment: .top) {
+                        .overlay(alignment: .bottom) {
                             VStack(spacing: 0) {
+                                voiceDownloadNote
                                 if showQuestionHeader {
                                     questionHeader
                                 }
-                                voiceDownloadNote
                             }
                             .background(.ultraThinMaterial)
                         }
@@ -168,35 +168,36 @@ struct DiscoverView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Settings on the left, the question controls on the right — the reporter
-                // wanted the gear to lead and the question icon to sit opposite it.
-                ToolbarItem(placement: .topBarLeading) {
+                // All of the feed's controls now live at the bottom, down by the tab bar and
+                // within thumb's reach, instead of up in the navigation bar. The gear still
+                // leads on the left and the question controls sit opposite it on the right —
+                // a single `Spacer` in the group splits the two.
+                ToolbarItemGroup(placement: .bottomBar) {
                     Button { showingSettings = true } label: {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel("Settings")
-                }
-                // One tap toggles the question banner — no menu to open first. The chevron
-                // points down while the question is showing (tap to collapse it away) and
-                // flips up once it's hidden (tap to bring it back).
-                ToolbarItem(placement: .topBarTrailing) {
+
+                    Spacer()
+
+                    // One tap toggles the question banner — no menu to open first. The chevron
+                    // points down while the question is showing (tap to collapse it away) and
+                    // flips up once it's hidden (tap to bring it back).
                     Button {
                         withAnimation(.snappy) { showQuestionHeader.toggle() }
                     } label: {
                         Image(systemName: showQuestionHeader ? "chevron.down" : "chevron.up")
                     }
                     .accessibilityLabel(showQuestionHeader ? "Hide the question" : "Show the question")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
+
                     Button { browsingQuestions = true } label: {
                         Image(systemName: "text.bubble.fill")
                     }
                     .accessibilityLabel("Browse questions")
-                }
-                // Draft an answer to the question you're currently listening to, without
-                // leaving the feed. Pause first so you're not writing over the top of an
-                // argument playing behind the sheet.
-                ToolbarItem(placement: .topBarTrailing) {
+
+                    // Draft an answer to the question you're currently listening to, without
+                    // leaving the feed. Pause first so you're not writing over the top of an
+                    // argument playing behind the sheet.
                     Button {
                         if player.isPlaying { player.togglePlayPause() }
                         composingAnswer = true
@@ -274,12 +275,12 @@ struct DiscoverView: View {
         }
     }
 
-    /// The question being argued, floating over the top of the feed rather than stacked
-    /// above it. It reads in full before you hear anyone argue it, and because it's an overlay
-    /// the video underneath keeps the whole screen — toggling the banner or landing on a
-    /// question of a different length expands or contracts this in place without pushing the
-    /// feed down. It sits on `.ultraThinMaterial` (from the overlay stack) so the type stays
-    /// legible over whatever frame is playing behind it.
+    /// The question being argued, floating over the bottom of the feed — just above the
+    /// controls now — rather than stacked above it. It reads in full before you hear anyone
+    /// argue it, and because it's an overlay the video underneath keeps the whole screen —
+    /// toggling the banner or landing on a question of a different length expands or contracts
+    /// this in place without pushing the feed. It sits on `.ultraThinMaterial` (from the
+    /// overlay stack) so the type stays legible over whatever frame is playing behind it.
     private var questionHeader: some View {
         Text(currentQuestion?.prompt ?? "")
             .font(.headline)
@@ -287,9 +288,9 @@ struct DiscoverView: View {
             .lineLimit(3)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 18)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .padding(.top, 18)
+            .padding(.bottom, 8)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     /// While the Kokoro weights come down, answers are read by the old system voice. Say so,
