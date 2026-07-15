@@ -1,1 +1,13 @@
-{"results":[],"test_instructions":[],"platform":"ios","created_at":"2026-07-15T15:01:29.586Z","description":"Voice note","id":"voice-3f4b07ee","updated_at":"2026-07-15T15:01:29.586Z","image_urls":["screenshot-CA20EDF7-7D4D-4519-840F-727D87114182.jpg"]}
+{
+  "results": [],
+  "test_instructions": [],
+  "platform": "ios",
+  "created_at": "2026-07-15T15:01:29.586Z",
+  "description": "The side button should all have a liquid glass background and also move them down slightly and just decrease the spacing between them so they take up less screen real estate. Finally the settings button could be moved into the account tab.",
+  "id": "voice-3f4b07ee",
+  "updated_at": "2026-07-15T15:02:38.000Z",
+  "image_urls": [
+    "screenshot-CA20EDF7-7D4D-4519-840F-727D87114182.jpg"
+  ],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
