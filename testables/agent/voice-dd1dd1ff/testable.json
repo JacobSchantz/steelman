@@ -1,1 +1,11 @@
-{"created_at":"2026-07-15T12:35:56.960Z","platform":"ios","results":[],"test_instructions":[],"updated_at":"2026-07-15T12:35:56.960Z","description":"Voice note","id":"voice-dd1dd1ff","image_urls":[]}
+{
+  "created_at": "2026-07-15T12:35:56.960Z",
+  "platform": "ios",
+  "results": [],
+  "test_instructions": [],
+  "updated_at": "2026-07-15T12:37:03.000Z",
+  "description": "Settings should be actually be on the left and let's put the question icon on the right. Then settings should have more detail about the speech, text-to-speech. It should give us the option to choose different models and different voices. You should also handle all the download progress, download status of each voice model. Thank you.",
+  "id": "voice-dd1dd1ff",
+  "image_urls": [],
+  "transcription_model": "mlx-community/whisper-large-v3-mlx"
+}
