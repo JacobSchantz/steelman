@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The card that opens a question: a screen that does nothing but read the question out
-/// loud. Every question starts here — you hear what's being argued before you hear anyone
-/// argue it, and (like a clip) you can't scroll past it until it has been read.
+/// loud. Every question starts here and the prompt reads aloud on its own, but — unlike a
+/// clip — it doesn't gate the feed: you can scroll straight past onto the first argument
+/// without hearing it out. Listening is an option (a tap replays it), not a toll.
 ///
 /// It sits on the same background as every other page. The question doesn't need a colour
 /// of its own to be understood as a question — the type and the reading say that.

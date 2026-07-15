@@ -13,9 +13,12 @@ import SwiftUI
 /// - Hearing a page out carries you to the next one *within the same question* on its own
 ///   (see `advanceToNextPage`), so a question plays hands-free: put the phone down and it
 ///   keeps arguing that one question at you until its last viewpoint, then holds there.
-/// - A later page can be peeked at by scrolling, but the feed bounces back with a lock
-///   message until the current page — question card or clip — has been heard to the end.
-///   The gate is per pass through a question (see `unlockedIndex`).
+/// - The question card itself never gates: you can scroll straight past it onto the first
+///   argument without hearing it read out. It still reads aloud when you land on it —
+///   listening is an option, not a toll (see `lockFloorIndex`).
+/// - Past the first argument, a later page can be peeked at by scrolling, but the feed
+///   bounces back with a lock message until the current clip has been heard to the end. The
+///   gate is per pass through a question (see `unlockedIndex`).
 struct DiscoverView: View {
     @ObservedObject var questions: QuestionStore
     @ObservedObject var answers: AnswerStore
@@ -36,9 +39,10 @@ struct DiscoverView: View {
     /// Clips for the selected question only, in alternating-side order.
     @State private var clips: [ArgumentClip] = []
     @State private var currentPageID: UUID?
-    /// How far into *this* question's feed the listener has earned their way: the highest
-    /// index in `pages` they're allowed to land on. It starts at 0 (the question card) every
-    /// time a question is entered and only moves when the page it points at is heard out.
+    /// How far into *this* question's feed the listener has earned their way through listening.
+    /// It starts at 0 every time a question is entered and only moves when the page it points at
+    /// is heard out. The actual highest landable index is `maxAllowedIndex`, which floors this at
+    /// the first argument (`lockFloorIndex`) so the question card is always scroll-through.
     ///
     /// It used to be a set of every page ever heard, which quietly disabled the lock: a
     /// question card's page id is its question's id, and the last page of a question's feed
@@ -131,10 +135,20 @@ struct DiscoverView: View {
         return sides.count > 1
     }
 
-    /// Highest index the listener may land on. Past that is locked until they listen.
+    /// The lowest the lock ever sits: the first argument (index 1), never the question card
+    /// (index 0). The question is meant to be scrolled straight through — you can move onto the
+    /// first viewpoint without hearing the prompt read out — so the first argument is always
+    /// reachable from the moment a question is entered. Only the arguments themselves have to be
+    /// earned. Clamped to what's actually in the feed: a question with no answers is a lone card,
+    /// so its floor is 0.
+    private var lockFloorIndex: Int { min(1, max(pages.count - 1, 0)) }
+
+    /// Highest index the listener may land on. Past that is locked until they listen. Never below
+    /// `lockFloorIndex`, so the question card can't gate the first argument even before anything
+    /// has been heard.
     private var maxAllowedIndex: Int {
         guard !pages.isEmpty else { return 0 }
-        return min(unlockedIndex, pages.count - 1)
+        return min(max(unlockedIndex, lockFloorIndex), pages.count - 1)
     }
 
     /// Everything earned, plus **one page beyond** — the peek. The peek exists so the
