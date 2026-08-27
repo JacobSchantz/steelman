@@ -1,5 +1,5 @@
 import SwiftUI
-import TestablesKit
+import PebblesKit
 
 @main
 struct SteelmanApp: App {
@@ -51,10 +51,10 @@ struct RootView: View {
         }
         .tint(SteelmanTheme.accent)
         .overlay(alignment: .top) {
-            TestingBannerView(config: TestingViewModel.shared.config)
+            PebblesBannerView(config: PebblesViewModel.shared.config)
         }
         .onAppear {
-            TestingViewModel.shared.loadTestables()
+            PebblesViewModel.shared.loadPebbles()
         }
     }
 }

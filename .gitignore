@@ -6,3 +6,29 @@ DerivedData/
 *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 .claude/
 .aider*
+
+# Pebbles runtime — never commit (Vigil writes these per-machine; a committed
+# .last_build gets reverted by git reset --hard and loops rebuilds forever)
+pebbles/.dispatch.lock
+pebbles/.vigil.lock
+pebbles/.last_build
+pebbles/.built_commit
+pebbles/.build_running
+pebbles/.build_result
+pebbles/.build_attempts
+pebbles/.pending_install
+pebbles/.device_offline
+pebbles/.last_build_android
+pebbles/.android_drop_running
+pebbles/.android_drop_result
+pebbles/.last_build_vision
+pebbles/.vision_build_running
+pebbles/.vision_build_result
+pebbles/.vision_build_attempts
+pebbles/.vision_device_offline
+pebbles/.last_testflight
+pebbles/.testflight_running
+pebbles/.testflight_result
+pebbles/.testflight_attempts
+pebbles/*.m4a
+pebbles/.trash/

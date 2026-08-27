@@ -74,11 +74,11 @@ Native SwiftUI app whose core loop is **Discover** — the same full-screen vert
 xcodegen generate
 open Steelman.xcodeproj
 
-# Device (testables)
-testables build ios
+# Device (pebbles)
+pebbles build ios
 # or: ./build_local.sh
 ```
 
 - **Bundle ID:** `com.steelman.app`
-- **Testables path:** `testables/`
+- **Pebbles path:** `pebbles/`
 - **PAT key:** `github_pat_for_steelman_testables`

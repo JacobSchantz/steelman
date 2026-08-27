@@ -1,13 +1,13 @@
-import TestablesKit
+import PebblesKit
 
-extension TestingViewModel {
-    /// App-wide Testables overlay model. Reads/writes human-testing items under
-    /// `testables/` in the GitHub repo, and stamps this build's commit so the
+extension PebblesViewModel {
+    /// App-wide Pebbles overlay model. Reads/writes human-testing items under
+    /// `pebbles/` in the GitHub repo, and stamps this build's commit so the
     /// overlay can flag when a fix hasn't landed yet.
-    static let shared = TestingViewModel(config: TestablesConfig(
+    static let shared = PebblesViewModel(config: PebblesConfig(
         githubRepo: "JacobSchantz/steelman",
         patKey: "github_pat_for_steelman_testables",
-        testablesPath: "testables",
+        pebblesPath: "pebbles",
         currentCommitHash: GitInfo.fullHash,
         currentCommitMessage: GitInfo.lastCommitMessage,
         commitCount: GitInfo.commitCount,

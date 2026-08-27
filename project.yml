@@ -6,8 +6,8 @@ options:
   xcodeVersion: "16.0"
 
 packages:
-  TestablesKit:
-    url: https://github.com/JacobSchantz/testables
+  PebblesKit:
+    url: https://github.com/JacobSchantz/Pebbles
     branch: main
 
 # The vendored sherpa-onnx + onnxruntime xcframeworks (Kokoro TTS) ship an arm64-only
@@ -48,7 +48,7 @@ targets:
       - path: Speech
       - path: Assets.xcassets
       - path: Info.plist
-      - path: testables
+      - path: pebbles
         type: folder
         buildPhase: resources
       # Kokoro G2P data (tokens.txt + espeak-ng-data). A *folder reference*, not a source
@@ -62,7 +62,7 @@ targets:
       - name: Write Git Info
         script: "bash ${SRCROOT}/Scripts/write_git_info.sh"
     dependencies:
-      - package: TestablesKit
+      - package: PebblesKit
       # Kokoro-82M runtime. STATIC xcframeworks, so they're linked into the binary rather
       # than embedded — embedding them would fail to sign/load as dynamic frameworks.
       - framework: Vendor/sherpa-onnx.xcframework
@@ -95,11 +95,11 @@ targets:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: testables
+      - path: pebbles
         includes:
           - "**/*.swift"
     dependencies:
-      - package: TestablesKit
+      - package: PebblesKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.steelman.app.tests

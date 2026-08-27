@@ -1,12 +1,12 @@
 import Foundation
-import TestablesKit
+import PebblesKit
 
 enum SteelmanConfig {
-    static let testablesConfig = TestablesConfig(
+    static let pebblesConfig = PebblesConfig(
         githubRepo: "JacobSchantz/steelman",
         githubBranch: "main",
         patKey: "github_pat_for_steelman_testables",
-        testablesPath: "testables",
+        pebblesPath: "pebbles",
         currentCommitHash: GitInfo.fullHash,
         currentCommitMessage: GitInfo.lastCommitMessage,
         commitCount: GitInfo.commitCount,

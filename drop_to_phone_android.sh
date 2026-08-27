@@ -2,17 +2,17 @@
 set -e
 
 # ─────────────────────────────────────────────────────────────────────────────
-# drop_to_phone_android.sh — TEMPLATE (copied into a project by `testables setup
+# drop_to_phone_android.sh — TEMPLATE (copied into a project by `pebbles setup
 # <project>`). Build a release APK and get it onto an Android phone the way every
-# testables-instrumented app does: adb-over-WiFi for an attached phone, or an OTA
+# pebbles-instrumented app does: adb-over-WiFi for an attached phone, or an OTA
 # publish to Vercel Blob that the in-app updater self-installs over any network.
 #
 # All the app-agnostic plumbing — adb connection/pairing/install/launch, the
-# Vercel Blob publish — lives in scripts/build_android_common.sh under ~/testables
+# Vercel Blob publish — lives in scripts/build_android_common.sh under ~/pebbles
 # (shared by atg, buyahabit, keepMovin, …). THIS script only declares the few
 # project-specific things in the CONFIG block below, then delegates.
 #
-# See ~/testables/docs/build-and-drop.md for the full picture (incl. the Vercel
+# See ~/pebbles/docs/build-and-drop.md for the full picture (incl. the Vercel
 # deploy gotcha that bites the buyahabit.com/<app> pretty URL).
 #
 # Usage:
@@ -49,15 +49,15 @@ PUBLIC_BASE="https://buyahabit.com/example"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$SCRIPT_DIR/$APP_SUBDIR"
 
-# --- Locate the shared Android engine (override with TESTABLES_ANDROID_COMMON_SH).
-TB_ANDROID_COMMON_SH="${TESTABLES_ANDROID_COMMON_SH:-$HOME/testables/scripts/build_android_common.sh}"
-if [ ! -f "$TB_ANDROID_COMMON_SH" ]; then
-  echo "ERROR: build_android_common.sh not found at $TB_ANDROID_COMMON_SH" >&2
-  echo "       (clone ~/testables, or export TESTABLES_ANDROID_COMMON_SH=<path>)" >&2
+# --- Locate the shared Android engine (override with PEBBLES_ANDROID_COMMON_SH).
+PB_ANDROID_COMMON_SH="${PEBBLES_ANDROID_COMMON_SH:-${TESTABLES_ANDROID_COMMON_SH:-$HOME/pebbles/scripts/build_android_common.sh}}"
+if [ ! -f "$PB_ANDROID_COMMON_SH" ]; then
+  echo "ERROR: build_android_common.sh not found at $PB_ANDROID_COMMON_SH" >&2
+  echo "       (clone ~/pebbles, or export PEBBLES_ANDROID_COMMON_SH=<path>)" >&2
   exit 1
 fi
 # shellcheck source=/dev/null
-source "$TB_ANDROID_COMMON_SH"
+source "$PB_ANDROID_COMMON_SH"
 
 FLAVOR="$DEFAULT_FLAVOR"
 LAUNCH=0; BUILD=1; CONNECT=""; PAIR_ENDPOINT=""; PAIR_CODE=""; DO_SETUP=0; SERVE=0; DROP=0
@@ -100,7 +100,7 @@ build_and_locate_apk() {
 
 # --- Connection-management subcommands -----------------------------------------
 if [ -n "$PAIR_ENDPOINT" ]; then
-  tb_android_pair "$PAIR_ENDPOINT" "$PAIR_CODE"
+  pb_android_pair "$PAIR_ENDPOINT" "$PAIR_CODE"
   echo "✅ Paired. Connect to the main port:  ./drop_to_phone_android.sh --connect <ip>:<connect-port> $FLAVOR"
   exit 0
 fi
@@ -108,7 +108,7 @@ fi
 # --- --serve : zero-ceremony WiFi drop (no adb) --------------------------------
 if [ "$SERVE" -eq 1 ]; then
   APK="$(build_and_locate_apk)" || exit 1
-  tb_android_serve "$APK" "${BLOB_DIR}${FLAVOR:+-$FLAVOR}.apk"
+  pb_android_serve "$APK" "${BLOB_DIR}${FLAVOR:+-$FLAVOR}.apk"
   exit 0
 fi
 
@@ -121,7 +121,7 @@ if [ "$DROP" -eq 1 ]; then
   BUILD_NUMBER="$COUNT"
   APK="$(build_and_locate_apk)" || exit 1
   # Empty file_prefix → <flavor>.apk (e.g. example/prod.apk + example/manifest-prod.json).
-  MANIFEST_URL="$(tb_android_publish_blob "$APK" "$BLOB_DIR" "" "$FLAVOR" "$COUNT" "$VNAME" "$NOTES" "$PUBLIC_BASE")" || exit 1
+  MANIFEST_URL="$(pb_android_publish_blob "$APK" "$BLOB_DIR" "" "$FLAVOR" "$COUNT" "$VNAME" "$NOTES" "$PUBLIC_BASE")" || exit 1
   echo "✅ Dropped $VNAME (versionCode $COUNT). The app self-updates on next launch."
   echo "   install  → $PUBLIC_BASE/$FLAVOR.apk"
   echo "   manifest → $MANIFEST_URL"
@@ -130,13 +130,13 @@ fi
 
 # --- adb path : resolve the device, build, install -----------------------------
 if [ "$DO_SETUP" -eq 1 ]; then
-  SERIAL="$(tb_android_setup_from_usb)" || exit 1
+  SERIAL="$(pb_android_setup_from_usb)" || exit 1
   echo "✅ Wireless adb ready ($SERIAL). You can unplug USB now."
 elif [ -n "$CONNECT" ]; then
-  SERIAL="$(tb_android_connect "$CONNECT")" || { echo "ERROR: couldn't connect to $CONNECT" >&2; exit 3; }
+  SERIAL="$(pb_android_connect "$CONNECT")" || { echo "ERROR: couldn't connect to $CONNECT" >&2; exit 3; }
 else
-  SERIAL="$(tb_android_detect_device)" || exit $?
+  SERIAL="$(pb_android_detect_device)" || exit $?
 fi
 echo "Target device: $SERIAL"
 APK="$(build_and_locate_apk)" || exit 1
-tb_android_install_and_launch "$SERIAL" "$APK" "$PACKAGE" "$LAUNCH"
+pb_android_install_and_launch "$SERIAL" "$APK" "$PACKAGE" "$LAUNCH"

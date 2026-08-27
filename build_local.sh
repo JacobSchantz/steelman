@@ -2,7 +2,7 @@
 set -o pipefail
 
 # Build + install Steelman on a connected iPhone (Release).
-# Resolved by `testables build ios` via convention: <repo>/build_local.sh
+# Resolved by `pebbles build ios` via convention: <repo>/build_local.sh
 #
 # Usage:  ./build_local.sh [--install-only] [device-id]
 echo "Building and running Steelman in release mode on iPhone..."
@@ -11,10 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Shared iOS engine: device detection, install with locked-device retry, launch.
-COMMON_SH="${TESTABLES_COMMON_SH:-$HOME/testables/scripts/build_ios_common.sh}"
+COMMON_SH="${PEBBLES_COMMON_SH:-${TESTABLES_COMMON_SH:-$HOME/pebbles/scripts/build_ios_common.sh}}"
 if [ ! -f "$COMMON_SH" ]; then
   echo "ERROR: build_ios_common.sh not found at $COMMON_SH" >&2
-  echo "       (clone ~/testables, or export TESTABLES_COMMON_SH=<path>)" >&2
+  echo "       (clone ~/pebbles, or export PEBBLES_COMMON_SH=<path>)" >&2
   exit 1
 fi
 # shellcheck source=/dev/null
@@ -23,8 +23,8 @@ source "$COMMON_SH"
 DERIVED_DATA="$SCRIPT_DIR/build/DerivedData"
 BUILD_LOG="$SCRIPT_DIR/build/build.log"
 APP_PATH="$DERIVED_DATA/Build/Products/Release-iphoneos/Steelman.app"
-SCHEME="${TESTABLES_SCHEME:-Steelman}"
-CONFIG_FILE="$HOME/.testables/config.json"
+SCHEME="${PEBBLES_SCHEME:-${TESTABLES_SCHEME:-Steelman}}"
+CONFIG_FILE="$HOME/.pebbles/config.json"
 
 INSTALL_ONLY=0
 POS_ARGS=()
@@ -41,24 +41,24 @@ if [ "$INSTALL_ONLY" = "1" ]; then
     exit 1
   fi
   echo "Skipping build, reusing existing app: $APP_PATH"
-  DEVICE_ID="${TESTABLES_DEVICE_ID:-${POS_ARGS[0]:-}}"
-  [ -n "$DEVICE_ID" ] || DEVICE_ID="$(tb_detect_device)" || exit "$TB_EXIT_NO_DEVICE"
-  tb_install_and_launch "$DEVICE_ID" "$APP_PATH"
+  DEVICE_ID="${PEBBLES_DEVICE_ID:-${TESTABLES_DEVICE_ID:-${POS_ARGS[0]:-}}}"
+  [ -n "$DEVICE_ID" ] || DEVICE_ID="$(pb_detect_device)" || exit "$PB_EXIT_NO_DEVICE"
+  pb_install_and_launch "$DEVICE_ID" "$APP_PATH"
   exit $?
 fi
 
-# Sync to remote so the device runs what's on origin/main (Testables overlay
+# Sync to remote so the device runs what's on origin/main (Pebbles overlay
 # verifies the running build by commit hash/count via GitInfo).
 echo "Syncing to remote (origin/main)..."
 git fetch origin
 git reset --hard origin/main
 git clean -fd
 
-DEVICE_ID="${TESTABLES_DEVICE_ID:-${POS_ARGS[0]:-}}"
-[ -n "$DEVICE_ID" ] || DEVICE_ID="$(tb_detect_device)" || exit "$TB_EXIT_NO_DEVICE"
+DEVICE_ID="${PEBBLES_DEVICE_ID:-${TESTABLES_DEVICE_ID:-${POS_ARGS[0]:-}}}"
+[ -n "$DEVICE_ID" ] || DEVICE_ID="$(pb_detect_device)" || exit "$PB_EXIT_NO_DEVICE"
 echo "Target device: $DEVICE_ID"
 
-DEVELOPMENT_TEAM="${TESTABLES_DEVELOPMENT_TEAM:-}"
+DEVELOPMENT_TEAM="${PEBBLES_DEVELOPMENT_TEAM:-${TESTABLES_DEVELOPMENT_TEAM:-}}"
 if [ -z "$DEVELOPMENT_TEAM" ] && [ -f "$CONFIG_FILE" ]; then
   DEVELOPMENT_TEAM="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('development_team',''))" "$CONFIG_FILE" 2>/dev/null)"
 fi
@@ -75,18 +75,18 @@ rm -rf Steelman.xcodeproj
 xcodegen generate
 rm -f Steelman.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
-# --- Refresh TestablesKit to the latest tip of main -----------------------
-# TestablesKit is pinned to `branch: main` in project.yml, but removing
+# --- Refresh PebblesKit to the latest tip of main -----------------------
+# PebblesKit is pinned to `branch: main` in project.yml, but removing
 # Package.resolved is NOT enough: SwiftPM resolves `main` against the global
 # mirror cache (~/Library/Caches/org.swift.swiftpm/repositories), which can be
-# stale. Wipe the testables mirror so the resolve re-clones it fresh, then
+# stale. Wipe the pebbles mirror so the resolve re-clones it fresh, then
 # verify the pin matches remote main.
-TESTABLES_URL="https://github.com/JacobSchantz/testables"
-echo "Refreshing TestablesKit to latest main..."
-rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/testables-* 2>/dev/null || true
+PEBBLES_URL="https://github.com/JacobSchantz/Pebbles"
+echo "Refreshing PebblesKit to latest main..."
+rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/pebbles-* 2>/dev/null || true
 
-LATEST_MAIN=$(git ls-remote "$TESTABLES_URL" refs/heads/main | awk '{print $1}')
-echo "TestablesKit remote main: ${LATEST_MAIN:-unknown}"
+LATEST_MAIN=$(git ls-remote "$PEBBLES_URL" refs/heads/main | awk '{print $1}')
+echo "PebblesKit remote main: ${LATEST_MAIN:-unknown}"
 
 echo "Resolving Swift package dependencies..."
 xcodebuild -project "$SCRIPT_DIR/Steelman.xcodeproj" \
@@ -95,11 +95,11 @@ xcodebuild -project "$SCRIPT_DIR/Steelman.xcodeproj" \
   -resolvePackageDependencies 2>&1 | tail -3
 
 RESOLVED_FILE="$SCRIPT_DIR/Steelman.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-RESOLVED_MAIN=$(grep -A6 '"identity" : "testables"' "$RESOLVED_FILE" 2>/dev/null \
+RESOLVED_MAIN=$(grep -A6 '"identity" : "pebbles"' "$RESOLVED_FILE" 2>/dev/null \
   | grep '"revision"' | head -1 | sed -E 's/.*"revision" : "([^"]+)".*/\1/')
-echo "TestablesKit resolved to:  ${RESOLVED_MAIN:-unknown}"
+echo "PebblesKit resolved to:  ${RESOLVED_MAIN:-unknown}"
 if [ -n "$LATEST_MAIN" ] && [ "$LATEST_MAIN" != "$RESOLVED_MAIN" ]; then
-  echo "⚠️  TestablesKit did not resolve to the latest main (got ${RESOLVED_MAIN:-none})." >&2
+  echo "⚠️  PebblesKit did not resolve to the latest main (got ${RESOLVED_MAIN:-none})." >&2
 fi
 
 echo "Building Steelman for iOS (clean build)... (log: $BUILD_LOG)"
@@ -128,6 +128,6 @@ if [ ! -d "$APP_PATH" ]; then
   exit 1
 fi
 
-tb_install_and_launch "$DEVICE_ID" "$APP_PATH"; RC=$?
+pb_install_and_launch "$DEVICE_ID" "$APP_PATH"; RC=$?
 [ "$RC" -eq 0 ] && echo "✅ Steelman launched on iPhone!"
 exit "$RC"
